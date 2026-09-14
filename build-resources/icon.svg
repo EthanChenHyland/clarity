@@ -1,0 +1,33 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="188" y1="148" x2="836" y2="876" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D355F"/>
+      <stop offset="0.42" stop-color="#161C2B"/>
+      <stop offset="1" stop-color="#0D111B"/>
+    </linearGradient>
+    <linearGradient id="stroke" x1="340" y1="314" x2="740" y2="716" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.66" stop-color="#DCEBFF"/>
+      <stop offset="1" stop-color="#A8CBFF"/>
+    </linearGradient>
+    <radialGradient id="dot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(744 512) rotate(90) scale(54)">
+      <stop stop-color="#CFE4FF"/>
+      <stop offset="0.52" stop-color="#6CA5FF"/>
+      <stop offset="1" stop-color="#3C83F5"/>
+    </radialGradient>
+    <filter id="dotGlow" x="646" y="414" width="196" height="196" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <rect x="106" y="96" width="812" height="812" rx="206" fill="url(#bg)"/>
+
+  <path d="M682 330C636 292 577 270 512 270C378 270 270 378 270 512C270 646 378 754 512 754C577 754 636 732 682 694"
+        stroke="#4E91FA" stroke-opacity="0.20" stroke-width="132" stroke-linecap="round"/>
+  <path d="M682 330C636 292 577 270 512 270C378 270 270 378 270 512C270 646 378 754 512 754C577 754 636 732 682 694"
+        stroke="url(#stroke)" stroke-width="92" stroke-linecap="round"/>
+
+  <circle cx="744" cy="512" r="76" fill="#3C83F5" fill-opacity="0.34" filter="url(#dotGlow)"/>
+  <circle cx="744" cy="512" r="50" fill="url(#dot)"/>
+  <circle cx="744" cy="512" r="20" fill="#EAF4FF" fill-opacity="0.92"/>
+</svg>

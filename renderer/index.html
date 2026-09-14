@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <title>Clarity</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Dedicated drag handle / top bar -->
+    <div id="toolbar" class="drag-handle">
+      <div class="drag-pill" title="Drag to move window">
+        <span class="drag-icon" aria-hidden="true"></span>
+        <span class="drag-label">Drag</span>
+      </div>
+      <button class="tb-logo" id="logo-btn" title="Help" aria-label="Help"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-hide" id="hide-btn" aria-label="Hide assistant panel" aria-expanded="true" aria-controls="panel-wrap"><span class="chev"></span><span>Hide</span></button>
+      <div class="tb-divider"></div>
+      <button class="tb-stop" id="stop-btn" title="Start listening" aria-label="Start listening"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-settings" id="toolbar-settings-btn" title="Settings (⌘,)" aria-label="Open settings"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-quit" id="quit-btn" title="Quit Clarity (⌘⇧X)" aria-label="Quit Clarity"></button>
+    </div>
+
+    <!-- Main assistant panel -->
+    <div id="panel-wrap">
+      <span id="live-dot" class="off"></span>
+      <div id="stt-status" class="stt-status stt-disconnected" title="STT connection status">off</div>
+      <div id="panel" class="glass no-drag">
+
+        <!-- Two-column layout: responses (left) + live transcript sidebar (right) -->
+        <div id="panel-columns">
+
+          <!-- Left column: AI responses -->
+          <div id="panel-main">
+            <div id="messages"></div>
+
+            <div id="action-row">
+              <button class="act" data-mode="say"
+                title="Suggests what to say next based on the conversation">
+                <span class="act-main"><span class="ic"></span><span>What to Say</span></span>
+                <span class="shortcut-hint" id="say-shortcut-hint"></span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="assist"
+                title="Scans your screen and conversation to decide what you need">
+                <span class="act-main"><span class="ic"></span><span>Assist</span></span>
+                <span class="shortcut-hint" id="assist-shortcut-hint"></span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="leetcode" title="Solve the coding problem visible on screen">
+                <span class="act-main"><span class="ic"></span><span>Solve Code</span></span>
+                <span class="shortcut-hint" id="leetcode-shortcut-hint"></span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="followup">
+                <span class="act-main"><span class="ic"></span><span>Follow-up</span></span>
+                <span class="shortcut-hint" id="followup-shortcut-hint"></span>
+              </button>
+              <span class="sep">•</span>
+              <button class="act" data-mode="recap">
+                <span class="act-main"><span class="ic"></span><span>Recap</span></span>
+                <span class="shortcut-hint" id="recap-shortcut-hint"></span>
+              </button>
+            </div>
+
+            <div id="composer">
+              <div id="input-area">
+                <div id="placeholder">Ask about your screen or conversation, or <span class="keycap">⌘</span><span class="keycap">⏎</span> for Assist</div>
+                <textarea id="input" rows="1" spellcheck="false"></textarea>
+              </div>
+              <div id="composer-bottom">
+                <button id="smart-toggle" class="smart-pill" aria-pressed="false"><span class="ic"></span><span>Smart</span></button>
+                <button id="history-btn" class="history-btn" title="View conversation history" aria-label="Show conversation history" aria-expanded="false" aria-controls="transcript-sidebar"><span class="ic"></span></button>
+                <button id="more-btn" class="more-btn" title="Settings" aria-label="Open settings"></button>
+                <div class="spacer"></div>
+                <button id="send-btn" title="Send" aria-label="Send message"></button>
+              </div>
+            </div>
+
+            <div id="prep-status" class="prep-status">
+              <span class="prep-item" data-field="resume">Resume</span>
+              <span class="prep-item" data-field="jd">JD</span>
+              <span class="prep-item" data-field="stories">Stories</span>
+              <span class="prep-item" data-field="salary">Salary</span>
+            </div>
+          </div>
+
+        </div><!-- /panel-columns -->
+      </div>
+    </div>
+
+    <!-- Transcript history sidebar — floats OUTSIDE main panel, toggled by history button -->
+    <div id="transcript-sidebar" class="transcript-sidebar hidden" role="complementary" aria-label="Conversation history" aria-hidden="true">
+      <div class="ts-header">
+        <span class="ts-title">Conversation History</span>
+        <button class="ts-close-btn" id="close-sidebar-btn" title="Close history" aria-label="Close conversation history">×</button>
+      </div>
+      <div id="ts-list" class="ts-list">
+        <div class="ts-placeholder">Conversation history will appear here when listening.</div>
+      </div>
+      <div class="ts-footer">
+        <button class="ts-open-btn" id="open-transcripts-btn" title="Open saved transcript files">Open Saved</button>
+        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear the current on-screen history">Clear Current</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="settings-scrim" class="hidden">
+    <div id="settings" class="glass" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="s-head">
+        <div class="s-title" id="settings-title">Settings</div>
+        <button id="s-close" class="s-close">Done</button>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="s-tabs" role="tablist" aria-label="Settings sections">
+        <button class="s-tab on" id="settings-tab-keys" data-tab="keys" role="tab" aria-selected="true" aria-controls="settings-pane-keys">Keys</button>
+        <button class="s-tab" id="settings-tab-transcription" data-tab="transcription" role="tab" aria-selected="false" aria-controls="settings-pane-transcription">Audio</button>
+        <button class="s-tab" id="settings-tab-profile" data-tab="profile" role="tab" aria-selected="false" aria-controls="settings-pane-profile">Profile</button>
+        <button class="s-tab" id="settings-tab-prep" data-tab="prep" role="tab" aria-selected="false" aria-controls="settings-pane-prep">Interview Prep</button>
+        <button class="s-tab" id="settings-tab-style" data-tab="style" role="tab" aria-selected="false" aria-controls="settings-pane-style">Style</button>
+        <button class="s-tab" id="settings-tab-qa" data-tab="qa" role="tab" aria-selected="false" aria-controls="settings-pane-qa">Q&amp;A</button>
+      </div>
+
+      <!-- Tab: Keys -->
+      <div class="s-body s-tab-pane" id="settings-pane-keys" data-pane="keys" role="tabpanel" aria-labelledby="settings-tab-keys">
+        <label class="s-label">Provider</label>
+        <div class="s-seg" id="provider-seg">
+          <button data-provider="openai">OpenAI</button>
+          <button data-provider="anthropic">Anthropic</button>
+          <button data-provider="gemini">Gemini</button>
+          <button data-provider="custom">Custom</button>
+          <button data-provider="ollama">Ollama</button>
+          <button data-provider="groq">Groq</button>
+          <button data-provider="minimax">MiniMax</button>
+          <button data-provider="azure">Azure AI</button>
+        </div>
+
+        <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally · sent only to the provider you configure</span></label>
+        <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
+        <div class="s-field"><span>Deepgram</span><input id="key-deepgram" type="password" placeholder="dg-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Custom</span><input id="key-custom" type="password" placeholder="optional" autocomplete="off" /></div>
+        <div class="s-field"><span>MiniMax</span><input id="key-minimax" type="password" placeholder="MiniMax API key" autocomplete="off" /></div>
+
+        <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound — a Global key will 401 against China, and vice versa</span></label>
+        <div class="s-seg" id="minimax-region-seg">
+          <button data-region="global_en">Global</button>
+          <button data-region="cn_zh">China</button>
+        </div>
+
+        <div id="custom-endpoint-settings" class="hidden">
+          <label class="s-label" for="base-url">Custom endpoint <span class="s-hint">OpenAI-compatible chat API</span></label>
+          <div class="s-field"><span>Base URL</span><input id="base-url" type="url" placeholder="https://openrouter.ai/api/v1" autocomplete="off" spellcheck="false" /></div>
+          <div class="s-help">Defaults to OpenRouter. Your Custom key and LLM requests are sent to this URL. Speech-to-text is configured separately in Audio, including Local.</div>
+        </div>
+        <div class="s-field"><span>Ollama URL</span><input id="key-ollama" type="text" placeholder="http://localhost:11434" autocomplete="off" /></div>
+        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+        <div class="s-field"><span>Azure AI Foundry</span><input id="key-azure" type="password" placeholder="azure key or Entra token" autocomplete="off" /></div>
+
+        <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (Clarity adds /openai/v1)</span></label>
+        <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
+
+        <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
+        <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
+        <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
+
+        <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what Clarity is doing</span></label>
+        <div class="s-callers" id="applink-callers"></div>
+
+        <div class="s-status" id="s-status"></div>
+      </div>
+
+      <!-- Tab: Transcription -->
+      <div class="s-body s-tab-pane hidden" id="settings-pane-transcription" data-pane="transcription" role="tabpanel" aria-labelledby="settings-tab-transcription">
+        <label class="s-label">Speech-to-text provider</label>
+        <div class="s-seg s-seg-wrap" id="stt-provider-seg">
+          <button data-stt-provider="auto">Auto</button>
+          <button data-stt-provider="local">Local</button>
+          <button data-stt-provider="deepgram">Deepgram</button>
+          <button data-stt-provider="openai">OpenAI</button>
+          <button data-stt-provider="gemini">Gemini</button>
+        </div>
+        <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
+
+        <div class="s-toggle-row">
+          <div>
+            <div class="s-toggle-title">Save transcripts</div>
+            <div class="s-note">On by default. Finalized transcript text is saved to Documents → Clarity Transcripts. Turn this off to keep new transcripts only in memory.</div>
+          </div>
+          <label class="live-answer-switch" title="Save finalized transcript text to disk">
+            <input id="save-transcripts-toggle" type="checkbox" />
+            <span class="switch-track"><span class="switch-knob"></span></span>
+          </label>
+        </div>
+
+        <div class="whisper-card">
+          <div class="whisper-runtime-row">
+            <span class="s-label">whisper.cpp runtime</span>
+            <span id="whisper-runtime-status" class="whisper-badge">Checking…</span>
+          </div>
+
+          <label class="s-label" for="whisper-model">Local model</label>
+          <select id="whisper-model" class="s-select"></select>
+          <div id="whisper-model-detail" class="s-note"></div>
+
+          <div id="whisper-progress-wrap" class="whisper-progress-wrap hidden">
+            <progress id="whisper-progress" max="100" value="0"></progress>
+            <span id="whisper-progress-label">0%</span>
+          </div>
+
+          <div class="whisper-actions">
+            <button id="whisper-download" class="s-action">Download</button>
+            <button id="whisper-cancel" class="s-action hidden">Cancel</button>
+            <button id="whisper-import" class="s-action">Import…</button>
+            <button id="whisper-delete" class="s-action danger" disabled>Delete</button>
+          </div>
+
+          <div class="s-field">
+            <span>Language</span>
+            <select id="whisper-language" class="s-select compact">
+              <option value="auto">Auto-detect</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="s-field">
+            <span>CPU threads</span>
+            <input id="whisper-threads" type="number" min="0" max="64" step="1" value="0" />
+          </div>
+          <div class="s-note">Use 0 for whisper.cpp's default. English-only models always use English regardless of the language setting.</div>
+        </div>
+
+        <div class="s-status" id="whisper-status"></div>
+      </div>
+
+      <!-- Tab: Profile -->
+      <div class="s-body s-tab-pane hidden" id="settings-pane-profile" data-pane="profile" role="tabpanel" aria-labelledby="settings-tab-profile">
+        <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
+        <div class="s-upload"><button class="s-action s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button><span class="s-filename" id="resume-filename"></span></div>
+        <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. Clarity will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
+
+        <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
+        <div class="s-upload"><button class="s-action s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button><span class="s-filename" id="jd-filename"></span></div>
+        <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. Clarity will highlight your most relevant experience."></textarea>
+      </div>
+
+      <!-- Tab: Interview Prep -->
+      <div class="s-body s-tab-pane hidden" id="settings-pane-prep" data-pane="prep" role="tabpanel" aria-labelledby="settings-tab-prep">
+        <div class="prep-hero">
+          <div class="prep-hero-copy">
+            <div class="prep-eyebrow">LIVE INTERVIEW</div>
+            <div class="prep-hero-title">Real-time answer suggestions</div>
+            <div class="prep-hero-body">On by default. While listening, Clarity detects interviewer questions and drafts replies using your configured AI provider, résumé, job description, and stories. Turn this off for manual answers only.</div>
+          </div>
+          <label class="live-answer-switch" title="Automatically draft an answer after an interviewer question">
+            <input id="live-answer-toggle" type="checkbox" />
+            <span class="switch-track"><span class="switch-knob"></span></span>
+          </label>
+        </div>
+
+        <div class="prep-flow">
+          <div class="prep-flow-step"><span>1</span><strong>Listen</strong><small>Mic + meeting audio</small></div>
+          <div class="prep-flow-arrow">→</div>
+          <div class="prep-flow-step"><span>2</span><strong>Detect</strong><small>Interviewer question</small></div>
+          <div class="prep-flow-arrow">→</div>
+          <div class="prep-flow-step"><span>3</span><strong>Draft</strong><small>Answer appears live</small></div>
+        </div>
+
+        <div class="prep-context-card" id="prep-readiness">
+          <div class="prep-card-head">
+            <div>
+              <div class="prep-card-title">Answer context</div>
+              <div class="prep-card-subtitle">More context makes behavioral and role-specific answers stronger.</div>
+            </div>
+          </div>
+          <div class="prep-context-grid">
+            <span class="prep-context-item" data-field="resume">Résumé</span>
+            <span class="prep-context-item" data-field="jd">Job description</span>
+            <span class="prep-context-item" data-field="stories">STAR stories</span>
+            <span class="prep-context-item" data-field="salary">Compensation</span>
+          </div>
+        </div>
+
+        <div class="prep-editor-card">
+          <div class="prep-field-head">
+            <div><strong>STAR stories</strong><small>3–5 real examples for behavioral questions</small></div>
+          </div>
+          <textarea id="star-stories" rows="8" spellcheck="false" placeholder="Story 1 — Conflict / ownership / leadership&#10;Situation: …&#10;Task: …&#10;Action: …&#10;Result: …&#10;&#10;Story 2 — …"></textarea>
+        </div>
+
+        <div class="prep-two-col">
+          <div class="prep-editor-card">
+            <div class="prep-field-head"><div><strong>Why this company</strong><small>Motivation and role-fit questions</small></div></div>
+            <textarea id="why-company" rows="4" spellcheck="false" placeholder="What specifically makes this company and role compelling to you?"></textarea>
+          </div>
+          <div class="prep-editor-card">
+            <div class="prep-field-head"><div><strong>Why you're moving on</strong><small>Keep the framing positive</small></div></div>
+            <textarea id="why-leaving" rows="4" spellcheck="false" placeholder="What are you looking for next that your current role cannot offer?"></textarea>
+          </div>
+        </div>
+
+        <div class="prep-editor-card">
+          <div class="prep-field-head"><div><strong>Work style &amp; values</strong><small>Culture-fit and situational questions</small></div></div>
+          <textarea id="work-style" rows="4" spellcheck="false" placeholder="How do you make decisions, handle ambiguity, collaborate, and respond to feedback?"></textarea>
+        </div>
+
+        <div class="prep-live-note"><strong>Live Answer only triggers on the “Them” channel.</strong> It waits briefly for fragmented transcription to settle, then answers likely questions. You can still use What should I say? or Assist manually at any time.</div>
+      </div>
+
+      <!-- Tab: Q&A -->
+      <div class="s-body s-tab-pane hidden" id="settings-pane-qa" data-pane="qa" role="tabpanel" aria-labelledby="settings-tab-qa">
+        <label class="s-label">Salary target <span class="s-hint">used when asked about compensation</span></label>
+        <input id="salary-target" class="s-input" type="text" placeholder="e.g. $150k–$180k base + equity, open to discuss total comp" autocomplete="off" />
+
+        <label class="s-label" style="margin-top:14px;">Questions to ask the interviewer <span class="s-hint">Clarity will suggest these at the end</span></label>
+        <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle technical debt?&#10;- What's the biggest challenge the team is facing right now?&#10;- How does feedback and mentorship work here?"></textarea>
+      </div>
+
+      <!-- Tab: Style -->
+      <div class="s-body s-tab-pane hidden" id="settings-pane-style" data-pane="style" role="tabpanel" aria-labelledby="settings-tab-style">
+        <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
+        <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.
+- Never use em-dashes.
+- Reply in 2-3 short bullet points.
+- Use a casual, first-person tone.
+- Avoid jargon; explain technical terms.
+- Don&#39;t start with &quot;I&quot;.
+"></textarea>
+        <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
+        <div class="s-hint-block">
+          These rules tell Clarity <strong>how</strong> to write, not <strong>what</strong> to say. Use one imperative sentence per line (e.g. <em>Never use em-dashes.</em>). They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when Clarity answers a question.
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+  <!-- First-run tutorial / walkthrough -->
+  <div id="onboard-scrim" class="hidden">
+    <div id="onboard" class="glass" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+      <div class="ob-head">
+        <div class="ob-brand">
+          <span class="ob-logo" id="ob-logo" aria-hidden="true"></span>
+          <div>
+            <div class="ob-eyebrow">CLARITY SETUP</div>
+            <div class="ob-step" id="ob-step"></div>
+          </div>
+        </div>
+        <div class="ob-dots" id="ob-dots"></div>
+      </div>
+      <div class="ob-stage" id="ob-stage">
+        <div class="ob-title" id="ob-title"></div>
+        <div class="ob-body" id="ob-body"></div>
+        <div class="ob-buttons" id="ob-buttons"></div>
+      </div>
+      <div class="ob-actions">
+        <button id="ob-skip" class="ob-ghost">Skip</button>
+        <div class="spacer"></div>
+        <button id="ob-back" class="ob-ghost">Back</button>
+        <button id="ob-quit" class="ob-ghost">Quit Clarity</button>
+        <button id="ob-next" class="ob-primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assistant access request. Shown in-window rather than as a native dialog:
+       Clarity hides its dock icon, so an OS panel never comes forward and cannot be
+       clicked. -->
+  <div id="consent-scrim" class="hidden">
+    <div id="consent" class="glass" role="dialog" aria-modal="true" aria-labelledby="cs-title" aria-describedby="cs-body">
+      <div class="cs-title" id="cs-title"></div>
+      <div class="cs-body" id="cs-body"></div>
+      <div class="cs-actions">
+        <button id="cs-deny" class="ob-ghost">Don’t allow</button>
+        <button id="cs-allow" class="ob-primary">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="icons.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

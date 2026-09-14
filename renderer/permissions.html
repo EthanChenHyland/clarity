@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <title>Clarity — Permissions</title>
+  <style>
+    :root {
+      --accent: #3C83F5;
+      --accent-hi: #4A8DF7;
+      --tx-1: rgba(255,255,255,0.95);
+      --tx-2: rgba(255,255,255,0.90);
+      --tx-mut: rgba(255,255,255,0.40);
+      --focus: rgba(126,177,255,0.92);
+      --ease-out: cubic-bezier(0.22,1,0.36,1);
+      --ease-in: cubic-bezier(0.4,0,1,1);
+      --dur-fast: 120ms;
+      --r-panel: 24px;
+      --r-card: 14px;
+      --r-control: 10px;
+      --r-pill: 999px;
+      --font: -apple-system, 'SF Pro Text', 'SF Pro Display', system-ui, 'Segoe UI', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: transparent;
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      cursor: default;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #perm-root {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 10px 44px;
+    }
+    .perm-card {
+      width: 100%;
+      max-width: 500px;
+      max-height: calc(100vh - 76px);
+      background: rgba(20,22,28,0.88);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--r-panel);
+      overflow-x: hidden;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      isolation: isolate;
+      clip-path: inset(0 round var(--r-panel));
+      box-shadow: none;
+      padding: 28px 30px 26px;
+      text-align: center;
+      app-region: no-drag;
+      -webkit-app-region: no-drag;
+    }
+    .perm-body { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 2px; }
+    .perm-title, .perm-actions { flex-shrink: 0; }
+    .no-drag { app-region: no-drag; -webkit-app-region: no-drag; }
+    button:focus:not(:focus-visible) { outline: none; }
+    button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+    .perm-title { app-region: drag; -webkit-app-region: drag; font-size: 22px; font-weight: 700; color: var(--tx-1); letter-spacing: -0.02em; margin-bottom: 8px; }
+    .perm-desc { font-size: 14px; line-height: 1.6; color: var(--tx-2); margin-bottom: 24px; text-align: center; }
+    .perm-desc strong { color: #fff; }
+
+    /* Permission rows */
+    .perm-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: var(--r-card);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 10px;
+      text-align: left;
+      transition: border-color 180ms ease, background 180ms ease, transform var(--dur-fast) ease;
+    }
+    .perm-row.granted {
+      border-color: rgba(34,197,94,0.35);
+      background: rgba(34,197,94,0.06);
+    }
+    .perm-row.denied {
+      border-color: rgba(255,100,70,0.30);
+      background: rgba(255,100,70,0.05);
+    }
+    .perm-info { flex: 1; min-width: 0; }
+    .perm-name { font-size: 14px; font-weight: 600; color: var(--tx-1); }
+    .perm-status { font-size: 12px; color: var(--tx-mut); margin-top: 2px; }
+    .perm-status.ok { color: #4ade80; }
+    .perm-status.bad { color: #ff8a75; }
+    .perm-badge {
+      flex-shrink: 0;
+      min-width: 38px; height: 26px;
+      padding: 0 8px;
+      border-radius: var(--r-pill);
+      display: grid; place-items: center;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .perm-badge.ok { background: rgba(34,197,94,0.18); }
+    .perm-badge.bad { background: rgba(255,100,70,0.15); }
+    .perm-open-btn {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border-radius: var(--r-control);
+      border: 1px solid rgba(60,131,245,0.40);
+      background: rgba(60,131,245,0.14);
+      color: #a8ccff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .perm-open-btn:hover { background: rgba(60,131,245,0.24); transform: translateY(-1px); }
+    .perm-open-btn:active { transform: scale(0.98); }
+    .perm-open-btn.hidden { display: none; }
+    /* Note */
+    .perm-note {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--tx-mut);
+      text-align: left;
+      margin: 16px 0 4px;
+      padding: 10px 14px;
+      border-radius: var(--r-control);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .perm-note strong { color: var(--tx-2); font-weight: 600; }
+
+    /* Actions */
+    .perm-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 20px;
+    }
+    .perm-ghost {
+      border: none;
+      background: transparent;
+      color: var(--tx-mut);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 9px 14px;
+      border-radius: var(--r-control);
+      font-family: var(--font);
+      transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .perm-ghost:hover { color: #fff; background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+    .perm-ghost:active { transform: scale(0.98); }
+    .spacer { flex: 1; }
+    .perm-check-btn {
+      padding: 9px 18px;
+      border-radius: var(--r-pill);
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: var(--tx-2);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .perm-check-btn:hover { background: rgba(255,255,255,0.10); color: #fff; transform: translateY(-1px); }
+    .perm-check-btn:active { transform: scale(0.98); }
+    .perm-check-btn.checking { opacity: 0.5; pointer-events: none; }
+    .perm-check-btn.hidden { display: none; }
+    .perm-actions button { white-space: nowrap; }
+    .perm-actions .perm-check-btn, .perm-actions .perm-continue-btn { padding: 9px 10px; }
+    .perm-actions .perm-ghost { padding: 9px 6px; }
+    .perm-card { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+    .perm-continue-btn {
+      padding: 9px 22px;
+      border-radius: var(--r-pill);
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      box-shadow: none;
+      transition: filter var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .perm-continue-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .perm-continue-btn:active { transform: scale(0.98); }
+    .perm-continue-btn:disabled {
+      opacity: 0.35;
+      pointer-events: none;
+      box-shadow: none;
+      filter: none;
+      transform: none;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px) scale(0.985); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; transform: none; }
+      to { opacity: 0; transform: scale(0.985); }
+    }
+    .perm-card { animation: fadeIn 210ms var(--ease-out) both; }
+    .perm-card.closing { pointer-events: none; animation: fadeOut 150ms var(--ease-in) both; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+      .perm-card { transform: none !important; opacity: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="perm-root">
+    <div class="perm-card">
+      <div class="perm-title">Clarity needs your permission</div>
+      <div class="perm-body">
+      <div class="perm-desc">
+        Grant <strong>Microphone</strong> and <strong>Screen &amp; System Audio Recording</strong> access so Clarity can hear your meetings and see your screen.
+      </div>
+
+      <!-- Microphone -->
+      <div class="perm-row no-drag" id="row-mic">
+        <div class="perm-info">
+          <div class="perm-name">Microphone</div>
+          <div class="perm-status" id="status-mic" aria-live="polite">Checking…</div>
+        </div>
+        <button class="perm-open-btn no-drag" id="btn-mic">Open Settings</button>
+        <span class="perm-badge" id="badge-mic"></span>
+      </div>
+
+      <!-- Screen & System Audio Recording -->
+      <div class="perm-row no-drag" id="row-screen">
+        <div class="perm-info">
+          <div class="perm-name">Screen &amp; System Audio Recording</div>
+          <div class="perm-status" id="status-screen" aria-live="polite">Checking…</div>
+        </div>
+        <button class="perm-open-btn no-drag" id="btn-screen">Check Access</button>
+        <span class="perm-badge" id="badge-screen"></span>
+      </div>
+
+      <div class="perm-note">
+        In <strong>System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording</strong>, enable <strong>Clarity</strong>. If it is missing, use <strong>+</strong> to add Clarity from Applications.
+        Press <strong>⌘⇧/</strong> to return to Clarity, then choose <strong>Check Access</strong>. If access still appears off after you enabled it, choose <strong>Restart Clarity</strong>.
+        <br><br><button class="perm-open-btn no-drag" id="open-screen-settings">Open Screen &amp; Audio Settings</button>
+        <button class="perm-open-btn no-drag" id="open-clarity-settings">Clarity Settings</button>
+      </div>
+
+      </div>
+      <div class="perm-actions no-drag">
+        <button class="perm-ghost" id="quit-btn">Quit</button>
+        <div class="spacer"></div>
+        <button class="perm-check-btn hidden" id="restart-btn">Restart Clarity</button>
+        <button class="perm-check-btn" id="check-btn">Check Again</button>
+        <button class="perm-continue-btn" id="continue-btn" disabled>Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./permissions.js"></script>
+</body>
+</html>
