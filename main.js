@@ -1294,7 +1294,12 @@ function launchApp() {
   // capture path enabled by the Chromium feature flags above.
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     if (isMac && getScreenPermissionStatus() !== 'granted') return callback();
-    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+    // Audio source selection needs display IDs, not preview images. The default
+    // thumbnails perform a separate screen capture before the real stream starts.
+    desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 0, height: 0 }
+    }).then((sources) => {
       if (!sources.length) return callback();
       const request = { video: sources[0] };
       if (isWindows || isMac) request.audio = 'loopback';

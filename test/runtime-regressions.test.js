@@ -278,3 +278,31 @@ test('focus on Clarity permission window completes native restoration instead of
   assert.equal(h.context.nativeUiRestorePending, false);
   assert.equal(h.levels.at(-1), true);
 });
+
+
+test('audio source selection skips thumbnail capture and preserves permission gating and loopback', async () => {
+  const source = read('main.js');
+  const start = source.indexOf('session.defaultSession.setDisplayMediaRequestHandler(');
+  const end = source.indexOf('}, { useSystemPicker: false });', start) + '}, { useSystemPicker: false });'.length;
+  let handler, options, enumerations = 0, granted = false;
+  const display = { id: 'screen:1:0', display_id: '1' };
+  vm.runInNewContext(source.slice(start, end), {
+    session: { defaultSession: { setDisplayMediaRequestHandler: (fn, opts) => { handler = fn; options = opts; } } },
+    isMac: true, isWindows: false,
+    getScreenPermissionStatus: () => granted ? 'granted' : 'denied',
+    desktopCapturer: { getSources: async opts => {
+      enumerations++;
+      assert.deepEqual(JSON.parse(JSON.stringify(opts)), { types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+      return [display];
+    } }
+  });
+  assert.equal(options.useSystemPicker, false);
+  const blocked = await new Promise(resolve => handler({}, resolve));
+  assert.equal(blocked, undefined);
+  assert.equal(enumerations, 0);
+  granted = true;
+  const selected = await new Promise(resolve => handler({}, resolve));
+  assert.equal(enumerations, 1);
+  assert.equal(selected.video, display);
+  assert.equal(selected.audio, 'loopback');
+});

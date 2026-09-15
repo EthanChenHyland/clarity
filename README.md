@@ -144,7 +144,7 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 237 tests. After packaging, verify bundle integrity:
+The current suite contains 238 tests. After packaging, verify bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app

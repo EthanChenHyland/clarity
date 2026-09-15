@@ -45,3 +45,12 @@ The user subsequently requested a complete reset, including downloaded models an
 ## v0.2.3 dual-architecture downloads
 
 At the user's request, v0.2.3 now includes manually attached Apple silicon and Intel ZIPs. Both are ad-hoc signed and not notarized. Both app and whisper-server architecture checks, bundle integrity checks, version checks, ZIP integrity checks, and whisper-server `--help` smoke tests passed on the build Mac. Packaged application source matches the release source. No interactive Intel-hardware capture test was performed. SHA-256 checksums accompany the downloads; these do not establish Gatekeeper approval.
+
+
+## Audio source thumbnail follow-up
+
+Play now enumerates display sources with zero-sized thumbnails, avoiding an unused preview capture while preserving permission gating and loopback audio. A regression test covers denied access and authorized source selection. All 238 tests pass.
+
+In the installed Apple silicon app, local base.en transcription captured a spoken test phrase accurately on both Them (system audio) and You (microphone). The microphone transcript added a trailing music marker. Listening was stopped after the test.
+
+After quitting, resetting Clarity's macOS permissions, and reopening normally, the permission window appeared with both inputs off. Check Access and Check Again responded, and Continue remained disabled. Settings and transcripts were preserved. The user confirmed the result works. These checks do not establish that macOS-owned recording dialogs can never recur. Published v0.2.3 downloads predate this follow-up change.
