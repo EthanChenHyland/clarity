@@ -167,8 +167,8 @@ test('toolbar exposes help and a dedicated four-way drag handle', () => {
   assert.match(css, /\.drag-pill[\s\S]*app-region:\s*drag/);
   assert.match(css, /button[\s\S]*app-region:\s*no-drag/);
   assert.match(css, /\.drag-icon svg \{ pointer-events:\s*none; \}/);
-  assert.match(renderer, /classList\.toggle\('mouse-ignored', \!\!v\)/);
-  assert.match(css, /html\.mouse-ignored #toolbar[\s\S]*app-region:\s*no-drag/);
+  assert.match(renderer, /clarity\.on\('mouse:interactive'/);
+  assert.doesNotMatch(css, /html\.mouse-ignored/);
 });
 
 test('toolbar icon controls are circular while drag stays a pill', () => {

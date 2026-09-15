@@ -834,7 +834,34 @@ ipcMain.on('mic:pcm', (event, arrayBuffer) => {
 ipcMain.on('system:pcm', (event, arrayBuffer) => {
   if (state.capturing && isMainRendererSender(event.sender) && isValidPcmPayload(arrayBuffer)) routeAudio('them', arrayBuffer);
 });
-ipcMain.on('mouse:ignore', (_e, v) => { if (win) win.setIgnoreMouseEvents(!!v, { forward: true }); });
+let toolbarWakeTimer = null;
+ipcMain.on('mouse:ignore', (event, ignored, toolbar) => {
+  if (!isMainRendererSender(event.sender) || !win || win.isDestroyed()) return;
+  if (toolbarWakeTimer) clearInterval(toolbarWakeTimer);
+  toolbarWakeTimer = null;
+  win.setIgnoreMouseEvents(!!ignored, { forward: true });
+  if (!ignored || !toolbar || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(toolbar[key]))) return;
+  // Native drag regions swallow renderer mouse events. Wake the toolbar from
+  // screen coordinates instead of dynamically removing its native drag region.
+  const target = win;
+  toolbarWakeTimer = setInterval(() => {
+    if (target.isDestroyed()) {
+      clearInterval(toolbarWakeTimer);
+      toolbarWakeTimer = null;
+      return;
+    }
+    if (!target.isVisible() || isForegroundYieldActive()) return;
+    const bounds = target.getBounds();
+    const cursor = screen.getCursorScreenPoint();
+    const x = cursor.x - bounds.x, y = cursor.y - bounds.y;
+    if (x < toolbar.x || x >= toolbar.x + toolbar.width || y < toolbar.y || y >= toolbar.y + toolbar.height) return;
+    target.setIgnoreMouseEvents(false);
+    send('mouse:interactive', {});
+    clearInterval(toolbarWakeTimer);
+    toolbarWakeTimer = null;
+  }, 30);
+  toolbarWakeTimer.unref();
+});
 function isAllowedPaneUrl(url) {
   if (typeof url !== 'string') return false;
   return /^ms-settings:privacy-(?:microphone|screenrecorder)$/i.test(url) ||

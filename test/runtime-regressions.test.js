@@ -332,3 +332,26 @@ test('all native file dialogs hide the overlay and restore it on cancellation or
     assert.deepEqual(events, ['hide', 'dialog', 'restore']);
   }
 });
+
+test('click-through wakes over native toolbar without renderer mouse events and respects native dialogs', () => {
+  const source = read('main.js');
+  let handler, tick, cursor = { x: 0, y: 0 }, yielding = false;
+  const changes = [], sent = [];
+  const win = { isDestroyed: () => false, isVisible: () => true,
+    getBounds: () => ({ x: 100, y: 200 }), setIgnoreMouseEvents: value => changes.push(value) };
+  vm.runInNewContext(source.slice(source.indexOf('let toolbarWakeTimer'), source.indexOf('function isAllowedPaneUrl')), {
+    win, ipcMain: { on: (_name, callback) => { handler = callback; } },
+    isMainRendererSender: sender => sender === 'main', isForegroundYieldActive: () => yielding,
+    screen: { getCursorScreenPoint: () => cursor }, send: channel => sent.push(channel),
+    setInterval: callback => { tick = callback; return { unref() {} }; }, clearInterval() {}
+  });
+  handler({ sender: 'other' }, true, {});
+  assert.deepEqual(changes, []);
+  handler({ sender: 'main' }, true, { x: 10, y: 10, width: 100, height: 40 });
+  tick(); assert.deepEqual(changes, [true]);
+  cursor = { x: 125, y: 225 }; yielding = true;
+  tick(); assert.deepEqual(changes, [true]);
+  yielding = false; tick();
+  assert.deepEqual(changes, [true, false]);
+  assert.deepEqual(sent, ['mouse:interactive']);
+});

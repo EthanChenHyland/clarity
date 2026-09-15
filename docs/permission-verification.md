@@ -60,3 +60,8 @@ After quitting, resetting Clarity's macOS permissions, and reopening normally, t
 All file browsers now use a standalone native dialog through the shared native-UI coordinator. Clarity hides while the browser is open and returns after dismissal or failure, avoiding the transparent parent-window sheet backdrop. Verified model import and both résumé/job-description PDF/DOCX buttons open as standalone windows and Cancel restores the same Settings tab. No files were imported during these checks. The transcript browser was also verified to return to Audio settings on Cancel.
 
 Settings → Audio now includes Open Folder beside Save transcripts. The busy-AI notice uses the in-panel transcription status area and expires after 1.4 seconds. All 239 tests pass; the installed Apple silicon build passes signature-integrity verification. These follow-up changes are not in the existing v0.2.3 release assets.
+
+
+## Drag handle follow-up
+
+Native toolbar drag regions now remain enabled while click-through mode is active. A main-process cursor check restores mouse interaction over the toolbar without requiring renderer mouse events or changing the native drag region. The check respects native-dialog foreground handoffs. All 240 tests pass. The user confirmed dragging works in the installed build; the computer-use tool could not independently target the transparent window for a drag gesture. The app was relaunched normally after visual testing.

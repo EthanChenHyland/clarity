@@ -1653,12 +1653,10 @@
   function setIgnore(v) {
     if (v === ignoring) return;
     ignoring = v;
-    // Electron drag regions do not emit pointer events. While the transparent
-    // window is click-through, temporarily make the toolbar a normal hit target
-    // so forwarded mouse movement can wake the window before the user clicks.
-    document.documentElement.classList.toggle('mouse-ignored', !!v);
-    clarity.setIgnoreMouse(v);
+    const toolbar = document.getElementById('toolbar').getBoundingClientRect();
+    clarity.setIgnoreMouse(v, { x: toolbar.x, y: toolbar.y, width: toolbar.width, height: toolbar.height });
   }
+  clarity.on('mouse:interactive', () => { ignoring = false; });
   document.addEventListener('mousemove', (e) => {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overUI = !!(el && el.closest && el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
