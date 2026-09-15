@@ -65,3 +65,7 @@ Settings → Audio now includes Open Folder beside Save transcripts. The busy-AI
 ## Drag handle follow-up
 
 Native toolbar drag regions now remain enabled while click-through mode is active. A main-process cursor check restores mouse interaction over the toolbar without requiring renderer mouse events or changing the native drag region. The check respects native-dialog foreground handoffs. All 240 tests pass. The user confirmed dragging works in the installed build; the computer-use tool could not independently target the transparent window for a drag gesture. The app was relaunched normally after visual testing.
+
+## v0.2.4 release validation
+
+Fresh Intel and Apple silicon packages include the capture-thumbnail, drag, in-panel busy notice, and standalone file-browser fixes. Both app bundles report version 0.2.4 and pass strict deep signature verification. App and whisper-server architectures match their targets, and both whisper-server executables pass a `--help` smoke test on the build Mac. All 39 application source files in each ASAR match the release source; both ZIPs pass integrity checks. The release includes SHA-256 checksums. All 240 tests pass. Packages remain ad-hoc signed and not notarized; Intel hardware capture remains unverified.

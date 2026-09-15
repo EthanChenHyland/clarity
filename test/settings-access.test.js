@@ -526,7 +526,7 @@ test('README matches the current macOS setup, speech install, shortcuts, and pic
   assert.match(readme, /Live Interview/);
   assert.match(readme, /Conversation History/);
   assert.match(readme, /ad-hoc signed/);
-  assert.match(readme, /Clarity-0\.2\.3-mac-x64\.zip/);
+  assert.match(readme, /Clarity-0\.2\.4-mac-x64\.zip/);
   assert.match(readme, /Saved transcript text is written to Documents by default/);
 });
 
