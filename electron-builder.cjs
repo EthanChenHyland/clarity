@@ -38,6 +38,7 @@ module.exports = {
   // launch, in a build that ran fine from source.
   files: ["main.js", "preload.js", "preload-permissions.js", "src/**/*", "renderer/**/*", "vendor/**/*"],
   directories: { buildResources: "build-resources" },
+  beforePack: () => require("./scripts/prepare-renderer").prepareRenderer(),
   afterPack: "scripts/after-pack.js",
   mac: {
     target: [{ target: "zip", arch: ["x64", "arm64"] }],

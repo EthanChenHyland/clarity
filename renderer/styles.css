@@ -1184,3 +1184,11 @@ select:focus-visible,
 @media (max-width: 420px) { .ob-actions { gap: 6px; } .ob-actions button { padding-inline: 9px; } }
 
 #settings-open-transcripts { margin-top: 10px; }
+
+/* Rich responses remain inside the scrollable answer panel. */
+.ai-text table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; margin: 10px 0; }
+.ai-text th, .ai-text td { border: 1px solid var(--bd-hair); padding: 6px 10px; text-align: left; }
+.ai-text h1, .ai-text h2, .ai-text h3 { font-size: 1.15em; margin: 14px 0 7px; }
+.ai-text blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--bd-hair); }
+.ai-text .katex-display, .ai-text .math-block, .ai-text eqn { display: block; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 5px 0; }
+.ai-text .katex { font-size: 1.08em; }

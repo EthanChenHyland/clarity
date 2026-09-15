@@ -1,6 +1,6 @@
 {
   "name": "clarity",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Open-source macOS real-time AI overlay for screen, microphone, and system-audio assistance.",
   "license": "GPL-3.0-or-later",
   "author": "Clarity contributors",
@@ -16,7 +16,10 @@
     "dist:win": "electron-builder --win",
     "pack:win": "electron-builder --win --dir",
     "dist:linux": "electron-builder --linux AppImage --x64",
-    "dist:linux:arm64": "electron-builder --linux AppImage --arm64"
+    "dist:linux:arm64": "electron-builder --linux AppImage --arm64",
+    "prepare:renderer": "node scripts/prepare-renderer.js",
+    "prestart": "npm run prepare:renderer",
+    "pretest": "npm run prepare:renderer"
   },
   "keywords": [
     "electron",
@@ -29,6 +32,7 @@
   "devDependencies": {
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "tar": "^7.5.22"
   },
   "engines": {
@@ -37,8 +41,11 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@google/genai": "^2.12.0",
+    "katex": "^0.18.7",
     "lucide-static": "^0.468.0",
     "mammoth": "^1.8.0",
+    "markdown-it": "^15.0.2",
+    "markdown-it-texmath": "^1.0.0",
     "openai": "^4.73.0",
     "pdf-parse": "^1.1.1",
     "ws": "^8.18.0"

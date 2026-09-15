@@ -338,6 +338,7 @@ test('click-through wakes over native toolbar without renderer mouse events and 
   let handler, tick, cursor = { x: 0, y: 0 }, yielding = false;
   const changes = [], sent = [];
   const win = { isDestroyed: () => false, isVisible: () => true,
+    webContents: { getZoomFactor: () => 1 },
     getBounds: () => ({ x: 100, y: 200 }), setIgnoreMouseEvents: value => changes.push(value) };
   vm.runInNewContext(source.slice(source.indexOf('let toolbarWakeTimer'), source.indexOf('function isAllowedPaneUrl')), {
     win, ipcMain: { on: (_name, callback) => { handler = callback; } },

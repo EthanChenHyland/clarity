@@ -57,31 +57,13 @@
 
   function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-  // minimal, safe markdown: fenced code, bullets, inline code, bold, paragraphs
   function renderMarkdown(text) {
-    const lines = text.split('\n');
-    let html = '', inCode = false, inList = false, buf = [];
-    const flushP = () => { if (buf.length) { html += '<p>' + inline(buf.join(' ')) + '</p>'; buf = []; } };
-    const inline = (s) => esc(s)
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    for (const raw of lines) {
-      const line = raw;
-      if (/^```/.test(line.trim())) {
-        if (!inCode) { flushP(); if (inList) { html += '</ul>'; inList = false; } html += '<pre><code>'; inCode = true; }
-        else { html += '</code></pre>'; inCode = false; }
-        continue;
-      }
-      if (inCode) { html += esc(line) + '\n'; continue; }
-      if (/^\s*[-*]\s+/.test(line)) { flushP(); if (!inList) { html += '<ul>'; inList = true; } html += '<li>' + inline(line.replace(/^\s*[-*]\s+/, '')) + '</li>'; continue; }
-      if (line.trim() === '') { flushP(); if (inList) { html += '</ul>'; inList = false; } continue; }
-      buf.push(line.trim());
-    }
-    flushP(); if (inList) html += '</ul>'; if (inCode) html += '</code></pre>';
-    return html;
+    return ClarityMarkdown.renderMarkdown(text);
   }
 
+  let markdownTimer = null;
   function clearMessages() {
+    clearTimeout(markdownTimer); markdownTimer = null;
     messages.innerHTML = '';
     messages.classList.remove('start-state');
     aiEl = null; caretEl = null; activeResponseGroup = null;
@@ -120,10 +102,20 @@
     } else {
       aiEl.appendChild(span);
     }
+    if (!markdownTimer) markdownTimer = setTimeout(() => {
+      markdownTimer = null;
+      if (!aiEl) return;
+      aiEl.innerHTML = renderMarkdown(aiEl.dataset.raw || '');
+      caretEl = document.createElement('span');
+      caretEl.className = 'ai-caret';
+      aiEl.appendChild(caretEl);
+      scheduleStreamScroll();
+    }, 120);
     scheduleStreamScroll();
   }
 
   function finalizeAi() {
+    clearTimeout(markdownTimer); markdownTimer = null;
     if (!aiEl) return;
     const raw = aiEl.dataset.raw || '';
     aiEl.innerHTML = renderMarkdown(raw);
@@ -1782,7 +1774,7 @@
     },
     {
       title: 'You’re all set',
-      body: 'How to use Clarity:<ul><li>' + sayShortcut + ' — <strong>What to Say</strong></li><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — <strong>Solve Code</strong></li><li>' + followupShortcut + ' — <strong>Follow-up</strong></li><li>' + recapShortcut + ' — <strong>Recap</strong></li><li>⌘, — <strong>Settings</strong></li><li>⌘⇧/ — <strong>Hide / Show</strong></li><li>Click <strong>Play</strong> in the top bar to start listening to a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime with the <strong>Help</strong> button. Quit with ' + quitShortcut + '.'
+      body: 'How to use Clarity:<ul><li>' + sayShortcut + ' — <strong>What to Say</strong></li><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — <strong>Solve Code</strong></li><li>' + followupShortcut + ' — <strong>Follow-up</strong></li><li>' + recapShortcut + ' — <strong>Recap</strong></li><li>⌘, — <strong>Settings</strong></li><li>⌘⇧/ — <strong>Hide / Show</strong></li><li>⌘+ / ⌘− — <strong>Zoom in / out</strong></li><li>⌘0 — <strong>Reset zoom to 100%</strong></li><li>Click <strong>Play</strong> in the top bar to start listening to a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime with the <strong>Help</strong> button. Quit with ' + quitShortcut + '.'
     }
   ];
   let obIndex = 0;

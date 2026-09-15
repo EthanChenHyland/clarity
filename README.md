@@ -102,10 +102,16 @@ Two settings are **on by default**:
 | Settings | `⌘,` |
 | Hide / show Clarity | `⌘⇧/` |
 | Quit | `⌘⇧X` |
+| Zoom in / out (Clarity focused) | `⌘+` / `⌘−` |
+| Reset zoom to 100% | `⌘0` |
 
 Settings → Audio → Save transcripts includes an Open Folder button that opens a native transcript browser. File browsers hide Clarity while open and restore it when dismissed, including model and PDF/DOCX imports.
 
 Use Play / Stop in the toolbar to control listening. The History button opens the transcript sidecar. Global shortcuts may conflict with other applications; the visible controls remain available.
+
+Zoom changes interface scale within the current window, from 60% to 170%; it does not change capture resolution. The same shortcuts are listed in Help and the first-run tutorial.
+
+AI responses render Markdown headings, lists, tables, and code, plus LaTeX math using `$…$`, `$$…$$`, `\(…\)`, `\[…\]`, equation environments, and math/latex/tex code fences. Rendering updates during streaming. Unsupported LaTeX remains visible as source text. Math assets and fonts are bundled locally; rendering does not contact a CDN.
 
 ## Privacy and storage
 
@@ -146,7 +152,7 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 240 tests. After packaging, verify bundle integrity:
+The current suite contains 244 tests. After packaging, verify bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app

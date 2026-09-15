@@ -5,6 +5,7 @@ const PRODUCT_NAME = 'Clarity';
 app.setName(PRODUCT_NAME);
 if (process.platform === 'win32') process.title = PRODUCT_NAME;
 const store = require('./src/store');
+const { nextZoomFactor } = require('./src/ui-zoom');
 const { captureScreenshot } = require('./src/screen');
 const { createSTT } = require('./src/stt');
 const { parseDocumentFile } = require('./src/resume');
@@ -355,6 +356,15 @@ function createWindow() {
   });
 
   win.setTitle(PRODUCT_NAME);
+
+  win.webContents.on('before-input-event', (event, input) => {
+    const next = nextZoomFactor(input, win.webContents.getZoomFactor(), isMac);
+    if (next === null) return;
+    event.preventDefault();
+    win.webContents.setZoomFactor(next);
+    win.setIgnoreMouseEvents(false);
+    send('mouse:interactive', {});
+  });
 
   win.webContents.on('did-finish-load', () => {
     win.showInactive();
@@ -853,7 +863,8 @@ ipcMain.on('mouse:ignore', (event, ignored, toolbar) => {
     if (!target.isVisible() || isForegroundYieldActive()) return;
     const bounds = target.getBounds();
     const cursor = screen.getCursorScreenPoint();
-    const x = cursor.x - bounds.x, y = cursor.y - bounds.y;
+    const zoom = target.webContents.getZoomFactor();
+    const x = (cursor.x - bounds.x) / zoom, y = (cursor.y - bounds.y) / zoom;
     if (x < toolbar.x || x >= toolbar.x + toolbar.width || y < toolbar.y || y >= toolbar.y + toolbar.height) return;
     target.setIgnoreMouseEvents(false);
     send('mouse:interactive', {});
