@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('clarity', {
   whisperModelDelete: (modelId) => ipcRenderer.invoke('whisper:model-delete', modelId),
   whisperModelImport: (modelId) => ipcRenderer.invoke('whisper:model-import', modelId),
   platformInfo: () => ipcRenderer.invoke('platform:info'),
+  stopResponse: () => ipcRenderer.send('llm:stop'),
   ask: (payload) => ipcRenderer.send('ask', payload),
   captureToggle: () => ipcRenderer.invoke('capture:toggle').catch((err) => {
     console.error('[clarity] captureToggle error', err);

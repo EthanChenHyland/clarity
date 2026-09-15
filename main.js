@@ -5,6 +5,7 @@ const PRODUCT_NAME = 'Clarity';
 app.setName(PRODUCT_NAME);
 if (process.platform === 'win32') process.title = PRODUCT_NAME;
 const store = require('./src/store');
+const { abortable } = require('./src/abortable');
 const { nextZoomFactor } = require('./src/ui-zoom');
 const { captureScreenshot } = require('./src/screen');
 const { createSTT } = require('./src/stt');
@@ -627,12 +628,19 @@ async function setCapturing(active) {
 }
 
 // -------- feature runner --------
+let activeResponseController = null;
+function stopResponse() {
+  clearTimeout(liveAnswerTimer);
+  liveAnswerTimer = null;
+  activeResponseController?.abort();
+}
 async function runFeature(mode, userText) {
   if (state.busy) return;
   const def = MODES[mode];
   if (!def) return;
   state.busy = true;
   const streamController = new AbortController();
+  activeResponseController = streamController;
   let streamSettled = false; // drop stray tokens from a stream we've already abandoned
   try {
     const settings = store.getSettings();
@@ -660,10 +668,11 @@ async function runFeature(mode, userText) {
       }
       try {
         const displayId = win && !win.isDestroyed() ? screen.getDisplayMatching(win.getBounds()).id : null;
-        imageDataUrl = await captureScreenshot(displayId);
+        imageDataUrl = await abortable(captureScreenshot(displayId), streamController.signal);
         if (!imageDataUrl) throw new Error('No screen source was available.');
       }
       catch (e) {
+        if (streamController.signal.aborted) throw e;
         recordEvent({ level: 'error', event: 'screen_capture_failed', msg: e && e.message ? e.message : String(e), frame: 'captureScreenshot', context: { mode } });
         const message = process.platform === 'darwin'
           ? 'Screen capture needs permission — grant Screen Recording to Clarity in System Settings.'
@@ -700,14 +709,14 @@ async function runFeature(mode, userText) {
           signal: streamController.signal,
           turns: [{ role: 'user', text: built }],
           imageDataUrl,
-          onProgress: () => { if (!streamSettled) rearm(); },
-          onToken: (t) => { if (streamSettled) return; rearm(); send('llm:token', { text: t }); }
+          onProgress: () => { if (!streamSettled && !streamController.signal.aborted) rearm(); },
+          onToken: (t) => { if (streamSettled || streamController.signal.aborted) return; rearm(); send('llm:token', { text: t }); }
       };
       // Coding answers regularly need more than the conversational token budget
       // once they include a complete implementation plus complexity analysis.
       if (mode === 'leetcode') streamOptions.maxTokens = settings.smart ? 6500 : 4500;
       await Promise.race([
-        llm.stream(streamOptions),
+        abortable(llm.stream(streamOptions), streamController.signal),
         stalled
       ]);
     } finally {
@@ -717,11 +726,16 @@ async function runFeature(mode, userText) {
     }
     send('llm:done', {});
   } catch (e) {
+    if (streamController.signal.aborted) {
+      send('llm:done', { stopped: true });
+      return;
+    }
     recordEvent({ level: 'error', event: 'llm_failed', msg: e && e.message ? e.message : String(e), frame: 'runFeature', context: { mode, provider: store.getSettings().provider } });
     send('llm:error', { message: e && e.message ? e.message : String(e) });
   } finally {
     streamSettled = true;
     streamController.abort();
+    activeResponseController = null;
     state.busy = false;
   }
 }
@@ -831,6 +845,10 @@ function isMainRendererSender(sender) {
 function isValidPcmPayload(value) {
   return value instanceof ArrayBuffer && value.byteLength > 0 && value.byteLength <= MAX_PCM_CHUNK_BYTES;
 }
+ipcMain.on('llm:stop', (event) => {
+  if (!isMainRendererSender(event.sender)) return;
+  stopResponse();
+});
 ipcMain.on('ask', (event, payload) => {
   if (!isMainRendererSender(event.sender) || !payload || typeof payload !== 'object') return;
   const mode = typeof payload.mode === 'string' ? payload.mode : '';

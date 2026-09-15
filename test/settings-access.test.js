@@ -128,7 +128,7 @@ test('screen-based actions do not summon a macOS screen permission prompt', () =
   const featureRunner = main.slice(main.indexOf('async function runFeature'), main.indexOf('// -------- IPC --------'));
   assert.match(featureRunner, /screenPermissionStatus = isMac \? systemPreferences\.getMediaAccessStatus\('screen'\) : 'granted'/);
   assert.match(featureRunner, /if \(isMac && screenPermissionStatus !== 'granted'\)[\s\S]*Screen & System Audio Recording permission is required/);
-  assert.match(featureRunner, /imageDataUrl = await captureScreenshot\(displayId\)/);
+  assert.match(featureRunner, /imageDataUrl = await abortable\(captureScreenshot\(displayId\), streamController.signal\)/);
   assert.doesNotMatch(featureRunner, /withNativeUiYield\(capture\)/);
 });
 

@@ -125,12 +125,16 @@
   let busyFailsafe = null;
   function setBusy(v) {
     busy = v;
-    $('#send-btn').classList.toggle('busy', v);
+    const button = $('#send-btn');
+    button.classList.toggle('busy', v);
+    button.innerHTML = icon(v ? 'stop-square' : 'play', { size: 15 });
+    button.title = v ? 'Stop response' : 'Send';
+    button.setAttribute('aria-label', v ? 'Stop response' : 'Send message');
     clearTimeout(busyFailsafe);
     // Failsafe: main has a 25s stream watchdog that always sends llm:done/llm:error, but if a
     // terminal event is ever lost the whole UI stays frozen. Allow the main process
     // its full three-minute deadline, including provider reasoning, before self-clearing.
-    if (v) busyFailsafe = setTimeout(() => { busy = false; $('#send-btn').classList.toggle('busy', false); }, 190000);
+    if (v) busyFailsafe = setTimeout(() => setBusy(false), 190000);
   }
 
   // ---- transcript helpers ------------------------------------------------
@@ -293,6 +297,7 @@
   $('#input-area').addEventListener('click', () => input.focus());
 
   function send() {
+    if (busy) { showStatus('AI is still responding — click Stop to cancel', 1400); return; }
     const text = input.value.trim();
     if (!text) { runMode('assist', ''); return; }
     
@@ -305,7 +310,10 @@
     updateSendButtonState();
     runMode('ask', text);
   }
-  $('#send-btn').addEventListener('click', send);
+  $('#send-btn').addEventListener('click', () => {
+    if (busy) clarity.stopResponse();
+    else send();
+  });
   input.addEventListener('keydown', (e) => {
     // Ctrl+Z / Cmd+Z: restore last question if input is empty
     if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !input.value.trim()) {
@@ -1056,8 +1064,9 @@
     setBusy(true);
   });
   clarity.on('llm:token', ({ text }) => appendToken(text));
-  clarity.on('llm:done', () => {
+  clarity.on('llm:done', ({ stopped } = {}) => {
     finalizeAi();
+    if (stopped) showStatus('Response stopped', 1400);
     messages.scrollTo({ top: messages.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     setBusy(false);
   });

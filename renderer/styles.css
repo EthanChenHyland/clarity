@@ -578,7 +578,8 @@ select:focus-visible,
 }
 #send-btn:hover { filter: brightness(1.08); transform: scale(1.05); }
 #send-btn:active { transform: scale(0.96); }
-#send-btn.busy { opacity: 0.6; pointer-events: none; }
+#send-btn.busy { opacity: 1; }
+#send-btn.busy svg { fill: currentColor; }
 
 /* ============================ Settings ============================ */
 #settings-scrim {
