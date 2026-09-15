@@ -306,3 +306,29 @@ test('audio source selection skips thumbnail capture and preserves permission ga
   assert.equal(selected.video, display);
   assert.equal(selected.audio, 'loopback');
 });
+
+test('all native file dialogs hide the overlay and restore it on cancellation or failure', async () => {
+  const source = read('main.js');
+  const start = source.indexOf('async function showNativeOpenDialog(');
+  const end = source.indexOf('// Keep the preload channel names stable', start);
+  for (const fails of [false, true]) {
+    const events = [];
+    const context = vm.createContext({
+      win: { isDestroyed: () => false, isVisible: () => true,
+        hide: () => events.push('hide') },
+      returnToClarity: () => events.push('restore'),
+      withNativeUiYield: async operation => operation(),
+      dialog: { showOpenDialog: async (...args) => {
+        assert.equal(args.length, 1);
+        events.push('dialog');
+        if (fails) throw new Error('open failed');
+        return { canceled: true, filePaths: [] };
+      } }
+    });
+    vm.runInContext(source.slice(start, end), context);
+    const operation = context.showNativeOpenDialog({ title: 'Import file' });
+    if (fails) await assert.rejects(operation, /open failed/);
+    else assert.equal((await operation).canceled, true);
+    assert.deepEqual(events, ['hide', 'dialog', 'restore']);
+  }
+});

@@ -1191,3 +1191,5 @@ select:focus-visible,
 
 #ob-quit { white-space: nowrap; }
 @media (max-width: 420px) { .ob-actions { gap: 6px; } .ob-actions button { padding-inline: 9px; } }
+
+#settings-open-transcripts { margin-top: 10px; }

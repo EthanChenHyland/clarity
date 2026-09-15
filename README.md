@@ -103,6 +103,8 @@ Two settings are **on by default**:
 | Hide / show Clarity | `⌘⇧/` |
 | Quit | `⌘⇧X` |
 
+Settings → Audio → Save transcripts includes an Open Folder button that opens a native transcript browser. File browsers hide Clarity while open and restore it when dismissed, including model and PDF/DOCX imports.
+
 Use Play / Stop in the toolbar to control listening. The History button opens the transcript sidecar. Global shortcuts may conflict with other applications; the visible controls remain available.
 
 ## Privacy and storage
@@ -144,7 +146,7 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 238 tests. After packaging, verify bundle integrity:
+The current suite contains 239 tests. After packaging, verify bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app

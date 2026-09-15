@@ -181,7 +181,7 @@
   // ---- actions -----------------------------------------------------------
   function runMode(mode, text) {
     if (busy) {
-      showToast('AI is still responding', 1400);
+      showStatus('AI is still responding', 1400);
       return;
     }
     setBusy(true);
@@ -826,12 +826,13 @@
     closeSidebarBtn.addEventListener('click', hideSidebar);
   }
 
-  const openTranscriptsBtn = document.getElementById('open-transcripts-btn');
-  if (openTranscriptsBtn) {
+  for (const id of ['open-transcripts-btn', 'settings-open-transcripts']) {
+    const openTranscriptsBtn = document.getElementById(id);
+    if (!openTranscriptsBtn) continue;
     openTranscriptsBtn.addEventListener('click', async () => {
       try {
-        await clarity.openTranscriptFolder();
-        showToast('Opened saved transcripts', 1800);
+        const result = await clarity.openTranscriptFolder();
+        if (!result?.canceled) showToast('Opened saved transcript', 1800);
       } catch (error) {
         showToast(`Could not open transcripts: ${error.message}`, 3200);
       }
@@ -1077,7 +1078,7 @@
     appendTranscriptHistoryTurn(channel, text, false);
   });
   let statusTimer = null;
-  function showStatus(message) {
+  function showStatus(message, ms = 11000) {
     let el = document.getElementById('clarity-status');
     if (!el) {
       el = document.createElement('div');
@@ -1096,7 +1097,7 @@
     el.textContent = message;
     el.classList.add('show');
     clearTimeout(statusTimer);
-    statusTimer = setTimeout(() => el.classList.remove('show'), 11000);
+    statusTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
   clarity.on('status', ({ message }) => {
     clarity.log('[status] ' + message);

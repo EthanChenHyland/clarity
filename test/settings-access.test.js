@@ -418,8 +418,8 @@ test('all native UI uses one depth-counted yield/restore coordinator', () => {
   assert.match(promptBridge, /settingsPriorityActive \? SETTINGS_WINDOW_LEVEL : MAIN_WINDOW_LEVEL/);
   assert.match(promptBridge, /permWin\.setAlwaysOnTop\(true, 'screen-saver', PERMISSIONS_WINDOW_LEVEL\)/);
   assert.match(promptBridge, /async function withNativeUiYield\(operation\)/);
-  assert.match(promptBridge, /async function showNativeOpenDialog\(options\)/);
-  assert.match(promptBridge, /dialog\.showOpenDialog\(win, options\)/);
+  assert.match(promptBridge, /async function showNativeOpenDialog\(options/);
+  assert.match(promptBridge, /dialog\.showOpenDialog\(options\)/);
   assert.match(main, /ipcMain\.handle\('native-permission-prompt:begin'/);
   assert.match(main, /ipcMain\.handle\('native-permission-prompt:end'/);
   assert.match(main, /browser-window-focus[\s\S]*nativeUiRestorePending[\s\S]*restoreAfterNativeUiYield\(\)/);
@@ -533,7 +533,7 @@ test('README matches the current macOS setup, speech install, shortcuts, and pic
 test('main-process native file pickers cannot bypass the native UI coordinator', () => {
   const main = read('main.js');
   const appLink = read('src/applink.js');
-  const coordinatorStart = main.indexOf('async function showNativeOpenDialog(options)');
+  const coordinatorStart = main.indexOf('async function showNativeOpenDialog(options');
   const coordinatorEnd = main.indexOf("ipcMain.handle('native-permission-prompt:begin'", coordinatorStart);
   assert.ok(coordinatorStart >= 0 && coordinatorEnd > coordinatorStart);
   const outsideCoordinator = main.slice(0, coordinatorStart) + main.slice(coordinatorEnd);
@@ -554,13 +554,16 @@ test('assistant consent cannot steal focus from native or external OS UI', () =>
   assert.ok(requestConsent.indexOf('!deps.canPresentConsent()') < requestConsent.indexOf('askInWindow(win'));
 });
 
-test('opening saved transcripts yields to Finder instead of covering it', () => {
+test('closing the saved transcript dialog restores Clarity through the native UI coordinator', () => {
   const main = read('main.js');
   const start = main.indexOf("ipcMain.handle('transcript:open-folder'");
   const end = main.indexOf('function isMainRendererSender', start);
   const handler = main.slice(start, end);
-  assert.match(handler, /yieldToExternalSettings\(\)[\s\S]*shell\.openPath\(directory\)/);
-  assert.match(handler, /if \(error\)[\s\S]*restoreAfterExternalSettings\(\)/);
+  assert.match(handler, /showNativeOpenDialog\(\{/);
+  assert.match(handler, /defaultPath: directory/);
+  assert.match(handler, /finally \{[\s\S]*returnToClarity\(\)/);
+  assert.match(handler, /selection.canceled.*return \{ ok: true, canceled: true \}/);
+  assert.match(handler, /yieldToExternalSettings\(\)[\s\S]*shell\.openPath\(selection.filePaths\[0\]\)/);
 });
 
 test('external privacy settings also yield Clarity on Windows and macOS', () => {

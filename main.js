@@ -790,14 +790,28 @@ ipcMain.handle('transcript:clear', () => {
 ipcMain.handle('transcript:open-folder', async () => {
   if (!transcriptArchive) throw new Error('Transcript storage is not ready yet.');
   const directory = transcriptArchive.ensureDirectory();
-  // Finder is external UI just like System Settings. Lower Clarity until the
-  // user returns so the newly opened Finder window cannot appear underneath the
-  // always-on-top overlay.
+  let selection;
+  try {
+    selection = await showNativeOpenDialog({
+      title: 'Saved transcripts',
+      defaultPath: directory,
+      buttonLabel: 'Open Transcript',
+      properties: ['openFile'],
+      filters: [{ name: 'Transcript text', extensions: ['txt'] }]
+    });
+  } finally {
+    // A Finder window has no close callback. A native dialog does, so closing
+    // this browser can reliably restore the same Clarity settings window.
+    returnToClarity();
+  }
+  if (selection.canceled || !selection.filePaths.length) return { ok: true, canceled: true };
   await yieldToExternalSettings();
-  const error = await shell.openPath(directory);
-  if (error) {
+  try {
+    const error = await shell.openPath(selection.filePaths[0]);
+    if (error) throw new Error(error);
+  } catch (error) {
     restoreAfterExternalSettings();
-    throw new Error(error);
+    throw error;
   }
   return { ok: true, directory };
 });
@@ -965,7 +979,19 @@ async function withNativeUiYield(operation) {
 }
 
 async function showNativeOpenDialog(options) {
-  return withNativeUiYield(() => dialog.showOpenDialog(win, options));
+  // Every file browser is independent of the transparent overlay, avoiding
+  // macOS's full-window sheet backdrop for model and document imports too.
+  const overlay = win;
+  const wasVisible = overlay && !overlay.isDestroyed() && overlay.isVisible();
+  try {
+    return await withNativeUiYield(async () => {
+      if (wasVisible) overlay.hide();
+      return dialog.showOpenDialog(options);
+    });
+  } finally {
+    // The native yield has ended before focus and window levels are restored.
+    if (wasVisible && !overlay.isDestroyed()) returnToClarity();
+  }
 }
 
 // Keep the preload channel names stable. invoke/handle is intentional here: the

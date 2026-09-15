@@ -54,3 +54,9 @@ Play now enumerates display sources with zero-sized thumbnails, avoiding an unus
 In the installed Apple silicon app, local base.en transcription captured a spoken test phrase accurately on both Them (system audio) and You (microphone). The microphone transcript added a trailing music marker. Listening was stopped after the test.
 
 After quitting, resetting Clarity's macOS permissions, and reopening normally, the permission window appeared with both inputs off. Check Access and Check Again responded, and Continue remained disabled. Settings and transcripts were preserved. The user confirmed the result works. These checks do not establish that macOS-owned recording dialogs can never recur. Published v0.2.3 downloads predate this follow-up change.
+
+## Settings file dialogs and status notices
+
+All file browsers now use a standalone native dialog through the shared native-UI coordinator. Clarity hides while the browser is open and returns after dismissal or failure, avoiding the transparent parent-window sheet backdrop. Verified model import and both résumé/job-description PDF/DOCX buttons open as standalone windows and Cancel restores the same Settings tab. No files were imported during these checks. The transcript browser was also verified to return to Audio settings on Cancel.
+
+Settings → Audio now includes Open Folder beside Save transcripts. The busy-AI notice uses the in-panel transcription status area and expires after 1.4 seconds. All 239 tests pass; the installed Apple silicon build passes signature-integrity verification. These follow-up changes are not in the existing v0.2.3 release assets.
