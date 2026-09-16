@@ -1318,7 +1318,7 @@
     document.querySelectorAll('#stt-provider-seg button').forEach((button) => {
       button.classList.toggle('on', button.dataset.sttProvider === (settings.sttProvider || 'auto'));
     });
-    const localWhisper = settings.localWhisper || { modelId: 'base.en', language: 'auto', threads: 0 };
+    const localWhisper = settings.localWhisper || { modelId: 'small.en', language: 'auto', threads: 0 };
     $('#whisper-language').value = localWhisper.language || 'auto';
     $('#whisper-threads').value = Number(localWhisper.threads) || 0;
     $('#save-transcripts-toggle').checked = !!settings.saveTranscripts;
@@ -1470,7 +1470,7 @@
   async function refreshWhisperModels() {
     const status = $('#whisper-status');
     try {
-      const previousSelection = $('#whisper-model').value || settings.localWhisper?.modelId || 'base.en';
+      const previousSelection = $('#whisper-model').value || settings.localWhisper?.modelId || 'small.en';
       whisperOverview = await clarity.whisperModels();
       const runtimeBadge = $('#whisper-runtime-status');
       runtimeBadge.classList.toggle('ready', whisperOverview.runtime.available);
@@ -1489,7 +1489,7 @@
         select.appendChild(option);
       }
       const selectionExists = whisperOverview.models.some((model) => model.id === previousSelection);
-      select.value = selectionExists ? previousSelection : 'base.en';
+      select.value = selectionExists ? previousSelection : 'small.en';
       if (!settings.localWhisper) settings.localWhisper = {};
       settings.localWhisper.modelId = select.value;
       status.textContent = whisperOverview.runtime.available
@@ -1590,7 +1590,7 @@
     settings.models[settings.provider].smart = $('#model-smart').value.trim();
     // Transcription
     if (!settings.localWhisper) settings.localWhisper = {};
-    settings.localWhisper.modelId = $('#whisper-model').value || settings.localWhisper.modelId || 'base.en';
+    settings.localWhisper.modelId = $('#whisper-model').value || settings.localWhisper.modelId || 'small.en';
     settings.localWhisper.language = $('#whisper-language').value || 'auto';
     settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt($('#whisper-threads').value, 10) || 0));
     settings.saveTranscripts = !!$('#save-transcripts-toggle').checked;
@@ -1774,7 +1774,7 @@
     },
     {
       title: 'Install speech-to-text',
-      body: 'Listening needs a speech-to-text engine in addition to your answer model.<br><br><strong>Recommended private setup:</strong> open <span class="hl">Settings → Audio</span>, choose <strong>Local</strong>, select <strong>base.en</strong>, and click <strong>Download</strong>. Wait until the model shows as installed before pressing Play.<br><br>You can instead choose <strong>Auto</strong>, <strong>Deepgram</strong>, <strong>OpenAI</strong>, or <strong>Gemini</strong> and provide the matching key. OpenRouter/Custom powers answers only; it does not transcribe speech.',
+      body: 'Listening needs a speech-to-text engine in addition to your answer model.<br><br><strong>Recommended private setup:</strong> open <span class="hl">Settings → Audio</span>, choose <strong>Local</strong>, select <strong>small.en</strong>, and click <strong>Download</strong>. It is a better accuracy/speed balance for real meetings than base.en. Wait until the model shows as installed before pressing Play.<br><br>You can instead choose <strong>Auto</strong>, <strong>Deepgram</strong>, <strong>OpenAI</strong>, or <strong>Gemini</strong> and provide the matching key. OpenRouter/Custom powers answers only; it does not transcribe speech.',
       buttons: [{ label: 'Open Audio Settings', action: () => openSettings('transcription') }]
     },
     {

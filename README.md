@@ -63,7 +63,7 @@ The tutorial opens first. Its second step, **Allow Clarity to see & hear**, cont
 1. **Microphone:** choose **Allow Microphone** to request access. If previously denied, this opens the relevant System Settings pane.
 2. **Screen & System Audio Recording:** open the privacy pane from the tutorial and enable Clarity. If necessary, use **+** to add `/Applications/Clarity.app`. Return with `⌘⇧/`, then choose **Check Screen & Audio access**. Restart Clarity if its running process still reports old access status.
 3. **Answer provider:** open **Settings → Keys**, choose a provider, and configure its credentials and models.
-4. **Speech-to-text:** open **Settings → Audio**. Local is the default; download a model such as `base.en` before starting listening. Alternatively, configure a supported cloud transcription provider.
+4. **Speech-to-text:** open **Settings → Audio**. Local is the default; `small.en` is the recommended local accuracy/speed balance for meetings. Download it before starting listening. Smaller models such as `base.en` use fewer resources but are less accurate on compressed or noisy meeting audio. Alternatively, configure a supported cloud transcription provider.
 
 Permission checks are passive; startup does not start a recording to force a permission prompt. Actual capture begins through Play or a screen-based action. The system-audio path supplies a display source without Apple's source picker, but macOS may still present native recording confirmations.
 

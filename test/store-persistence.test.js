@@ -109,6 +109,7 @@ test('fresh users save transcripts and get live answers by default; explicit opt
     let store = loadStore(userData);
     assert.equal(store.getSettings().saveTranscripts, true);
     assert.equal(store.getSettings().liveAnswerSuggestions, true);
+    assert.equal(store.getSettings().localWhisper.modelId, 'small.en');
     store.setSettings({ saveTranscripts: false, liveAnswerSuggestions: false });
     store = loadStore(userData);
     assert.equal(store.getSettings().saveTranscripts, false);

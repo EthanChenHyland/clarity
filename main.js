@@ -8,7 +8,7 @@ const store = require('./src/store');
 const { abortable } = require('./src/abortable');
 const { nextZoomFactor } = require('./src/ui-zoom');
 const { captureScreenshot } = require('./src/screen');
-const { createSTT } = require('./src/stt');
+const { createSTT, buildVocabPrompt } = require('./src/stt');
 const { parseDocumentFile } = require('./src/resume');
 const { createLLM } = require('./src/llm');
 const { MODES } = require('./src/prompts');
@@ -29,7 +29,7 @@ if (process.platform === 'darwin') {
   app.commandLine.appendSwitch('disable-features', 'MacCatapLoopbackAudioForScreenShare');
 }
 const { WhisperModelManager } = require('./src/whisper-model-manager');
-const { requireWhisperModel } = require('./src/whisper-model-catalog');
+const { requireWhisperModel, DEFAULT_MODEL_ID } = require('./src/whisper-model-catalog');
 const { locateWhisperRuntime } = require('./src/whisper-runtime');
 const { LocalWhisperTranscriber } = require('./src/local-whisper-transcriber');
 
@@ -201,7 +201,7 @@ function shouldSuppressMicEcho(turn) {
 async function startLocalWhisper(settings) {
   if (!whisperModelManager) throw new Error('The local Whisper model manager is not ready.');
   const localSettings = settings.localWhisper || {};
-  const model = requireWhisperModel(localSettings.modelId || 'base.en');
+  const model = requireWhisperModel(localSettings.modelId || DEFAULT_MODEL_ID);
   const runtime = getWhisperRuntime();
   if (!runtime.available) throw new Error(runtime.message);
   activeWhisperModelId = model.id;
@@ -221,7 +221,8 @@ async function startLocalWhisper(settings) {
         modelPath,
         language: model.englishOnly ? 'en' : (localSettings.language || 'auto'),
         threads: Number(localSettings.threads) || 0,
-        tinydiarize: model.tinydiarize
+        tinydiarize: model.tinydiarize,
+        initialPrompt: buildVocabPrompt(settings)
       },
       onTranscript: publishTranscript,
       onSpeechState: (channel, speaking, durationMs) => {
@@ -586,7 +587,7 @@ async function setCapturing(active) {
 
     if (!createSTT(settings).available && !(['auto', 'deepgram'].includes(settings.sttProvider || 'auto') && settings.apiKeys?.deepgram)) {
       desiredCaptureState = false;
-      send('status', { message: 'Set up speech-to-text in Settings → Audio. Choose Local and download base.en, or configure a speech provider key.' });
+      send('status', { message: `Set up speech-to-text in Settings → Audio. Choose Local and download ${DEFAULT_MODEL_ID}, or configure a speech provider key.` });
       send('capture:state', { active: false, streaming: false, mode: 'off' });
       return false;
     }

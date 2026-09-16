@@ -517,7 +517,7 @@ test('screen permission status refreshes after returning from System Settings an
 test('README matches the current macOS setup, speech install, shortcuts, and picker-free capture flow', () => {
   const readme = read('README.md');
   assert.match(readme, /Current target: Apple silicon Macs/);
-  assert.match(readme, /Local is the default; download a model such as `base\.en`/);
+  assert.match(readme, /Local is the default; `small\.en` is the recommended local accuracy\/speed balance/);
   assert.match(readme, /OpenRouter\/Custom credentials do not configure speech-to-text/);
   assert.match(readme, /without Apple's source picker/);
   assert.match(readme, /Screen & System Audio Recording/);
@@ -638,7 +638,7 @@ test('tutorial has six navigable steps, includes speech setup, and can be reopen
   const tutorial = renderer.slice(renderer.indexOf('const OB_STEPS = ['), renderer.indexOf('// ---- boot'));
   assert.equal((tutorial.match(/title:\s*'/g) || []).length, 6);
   assert.match(tutorial, /title:\s*'Install speech-to-text'/);
-  assert.match(tutorial, /Settings → Audio[\s\S]*base\.en[\s\S]*Download/);
+  assert.match(tutorial, /Settings → Audio[\s\S]*small\.en[\s\S]*Download/);
   assert.match(tutorial, /Open Audio Settings[\s\S]*openSettings\('transcription'\)/);
   assert.match(tutorial, /#ob-next'[\s\S]*obIndex === OB_STEPS\.length - 1[\s\S]*obIndex\+\+/);
   assert.match(tutorial, /#ob-back'[\s\S]*obIndex > 0[\s\S]*obIndex--/);

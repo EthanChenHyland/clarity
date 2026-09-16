@@ -43,6 +43,7 @@ test('loads one server process and reuses it for multiple in-memory inferences',
     modelPath,
     language: 'en',
     threads: 3,
+    initialPrompt: 'Kubernetes, Terraform, Vanderbilt',
     spawnImpl: (...args) => { spawnCalls.push(args); return child; },
     findPort: async () => 43123,
     randomBytes: (size) => Buffer.alloc(size, 7),
@@ -61,6 +62,9 @@ test('loads one server process and reuses it for multiple in-memory inferences',
   assert.deepEqual(argumentsList.slice(0, 2), ['--model', modelPath]);
   assert.ok(argumentsList.includes('--request-path'));
   assert.ok(!argumentsList.includes('--convert'));
+  assert.deepEqual(argumentsList.slice(argumentsList.indexOf('--prompt'), argumentsList.indexOf('--prompt') + 2), [
+    '--prompt', 'Kubernetes, Terraform, Vanderbilt'
+  ]);
 
   assert.equal(await session.transcribe(Buffer.alloc(3200)), 'hello locally');
   assert.equal(await session.transcribe(Buffer.alloc(3200)), 'hello locally');

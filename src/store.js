@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { normalizeBaseUrl } = require('./openai-compatible');
+const { DEFAULT_MODEL_ID } = require('./whisper-model-catalog');
 
 const USER_DATA_DIR = app.getPath('userData');
 const FILE = path.join(USER_DATA_DIR, 'clarity-data.json');
@@ -29,7 +30,7 @@ const DEFAULTS = {
   provider: 'openai',
   sttProvider: 'local',
   localWhisper: {
-    modelId: 'base.en',
+    modelId: DEFAULT_MODEL_ID,
     language: 'auto',
     threads: 0
   },
