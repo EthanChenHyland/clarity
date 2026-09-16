@@ -127,13 +127,13 @@ test('Custom defaults populate fresh and legacy empty settings while preserving 
     let store = loadStore(userData);
     assert.equal(store.getSettings().baseUrl, 'https://openrouter.ai/api/v1');
     assert.deepEqual(store.getSettings().models.custom, {
-      fast: 'deepseek/deepseek-v4.1-flash', smart: 'openai/gpt-5.6-sol'
+      fast: 'moonshotai/kimi-k3:nitro', smart: 'openai/gpt-5.6-sol'
     });
     fs.writeFileSync(path.join(userData, 'clarity-data.json'), JSON.stringify({
       baseUrl: '', models: { custom: { fast: '', smart: '' } }
     }));
     store = loadStore(userData);
-    assert.equal(store.getSettings().models.custom.fast, 'deepseek/deepseek-v4.1-flash');
+    assert.equal(store.getSettings().models.custom.fast, 'moonshotai/kimi-k3:nitro');
     store.setSettings({ baseUrl: 'https://example.com/v1', models: { custom: { fast: 'my-model', smart: '' } } });
     store = loadStore(userData);
     assert.equal(store.getSettings().baseUrl, 'https://example.com/v1');

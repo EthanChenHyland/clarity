@@ -8,12 +8,12 @@ Clarity is an open-source macOS AI overlay for screen assistance, conversation t
 
 ## Release status
 
-**v0.2.4 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
+**v0.2.8 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
 
 | Mac | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.4-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.4/Clarity-0.2.4-mac-arm64.zip) |
-| Intel | [Clarity-0.2.4-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.4/Clarity-0.2.4-mac-x64.zip) |
+| Apple silicon (M-series) | [Clarity-0.2.8-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.8/Clarity-0.2.8-mac-arm64.zip) |
+| Intel | [Clarity-0.2.8-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.8/Clarity-0.2.8-mac-x64.zip) |
 
 Unzip the matching download and move `Clarity.app` to Applications. Both builds are **ad-hoc signed, not Developer ID-signed or notarized**. macOS may block them on first launch; passing a signature integrity check does not imply Gatekeeper approval. The release includes `SHA256SUMS.txt` for download-integrity checks. Building from source remains available below.
 
@@ -52,7 +52,7 @@ To produce both macOS apps and ZIPs:
 npm run dist:mac -- --arm64 --x64
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.4-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.4-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.8-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.8-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 
@@ -78,7 +78,7 @@ For OpenRouter, select **Custom**. The fields default to:
 | Field | Default |
 |---|---|
 | Base URL | `https://openrouter.ai/api/v1` |
-| Fast model | `deepseek/deepseek-v4.1-flash` |
+| Fast model | `moonshotai/kimi-k3:nitro` |
 | Smart model | `openai/gpt-5.6-sol` |
 
 Enter your own OpenRouter API key. These are configured defaults, not a guarantee that either model is available to your account or supports screenshots. Replace them with supported model IDs as needed. Existing nonempty custom settings are preserved.
@@ -160,7 +160,7 @@ The current suite contains 247 tests. After packaging, verify bundle integrity:
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app
 ```
 
-Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered release workflow builds Apple silicon and only uploads its ZIP when signing configuration is present. The two ad-hoc v0.2.4 assets are manually built and attached. No certificate is configured in the local development environment.
+Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered release workflow builds Apple silicon and only uploads its ZIP when signing configuration is present. The ad-hoc macOS assets are manually built and attached. No certificate is configured in the local development environment.
 
 The project uses Electron with plain HTML, CSS, and JavaScript: `main.js` owns windows and IPC, `renderer/` contains the UI and audio capture, and `src/` contains providers, transcription, storage, and supporting logic. Review the loopback compatibility configuration before upgrading Electron to 45 or later.
 

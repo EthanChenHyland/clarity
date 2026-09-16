@@ -26,7 +26,7 @@ test('first-run onboarding is explicit and completing it preserves configured se
       sttProvider: 'local',
       smart: true,
       baseUrl: 'https://openrouter.ai/api/v1',
-      models: { custom: { fast: 'deepseek/deepseek-v4.1-flash', smart: 'openai/gpt-5.6-sol' } }
+      models: { custom: { fast: 'moonshotai/kimi-k3:nitro', smart: 'openai/gpt-5.6-sol' } }
     });
     store.setSettings({ onboarded: true });
 
@@ -36,7 +36,7 @@ test('first-run onboarding is explicit and completing it preserves configured se
     assert.equal(persisted.sttProvider, 'local');
     assert.equal(persisted.smart, true);
     assert.equal(persisted.baseUrl, 'https://openrouter.ai/api/v1');
-    assert.equal(persisted.models.custom.fast, 'deepseek/deepseek-v4.1-flash');
+    assert.equal(persisted.models.custom.fast, 'moonshotai/kimi-k3:nitro');
     assert.equal(persisted.models.custom.smart, 'openai/gpt-5.6-sol');
   } finally {
     Module._load = originalLoad;
