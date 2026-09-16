@@ -583,7 +583,7 @@ test('macOS display capture stays picker-free and uses Clarity loopback capture'
 
 test('starting an already-authorized microphone does not hide Clarity', () => {
   const renderer = read('renderer/renderer.js');
-  const start = renderer.indexOf('async function startMic()');
+  const start = renderer.indexOf('async function startMic(');
   const end = renderer.indexOf('function stopMic()', start);
   const micStart = renderer.slice(start, end);
   assert.match(micStart, /const permissionStatus = await clarity\.permissionsCheck\(\)/);

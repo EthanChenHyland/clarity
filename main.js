@@ -180,22 +180,37 @@ function getWhisperRuntime() {
   });
 }
 
+let transcriptSessionStartedAt = 0;
 function publishTranscript(channel, text) {
   if (!text || !text.trim()) return;
   const turn = { channel, text: text.trim(), ts: Date.now() };
   if (shouldSuppressMicEcho(turn)) return;
+  let corrected = false;
+  if (channel === 'them') {
+    // Inference completion order can differ from capture order. Prefer the
+    // loopback attribution when its microphone copy was published first.
+    for (let i = transcript.length - 1; i >= 0; i--) {
+      const prior = transcript[i];
+      if (prior.ts < transcriptSessionStartedAt || turn.ts - prior.ts > 12000) break;
+      if (prior.channel === 'you' && isLikelyTranscriptEcho(prior.text, turn.text)) {
+        transcript.splice(i, 1);
+        try { transcriptArchive?.remove?.(prior); }
+        catch (error) { recordEvent({ level: 'error', event: 'transcript_archive_failed', msg: error.message, frame: 'publishTranscript' }); }
+        corrected = true;
+      }
+    }
+  }
   pushTranscript(turn);
-  send('transcript', turn);
+  if (corrected) send('transcript:sync', transcript);
+  else send('transcript', turn);
   send('stt:final', { channel, text: turn.text });
 }
 
 function shouldSuppressMicEcho(turn) {
   if (!turn || turn.channel !== 'you') return false;
-  const lastTurn = transcript[transcript.length - 1];
-  if (!lastTurn || lastTurn.channel !== 'them') return false;
-  if (turn.ts - lastTurn.ts > 4500) return false;
-  const remoteText = collectRecentInterviewerQuestion(transcript, { maxTurns: 3, maxGapMs: 4500 });
-  return isLikelyTranscriptEcho(turn.text, remoteText);
+  return transcript.some(prior => prior.ts >= transcriptSessionStartedAt && prior.channel === 'them' &&
+    turn.ts >= prior.ts && turn.ts - prior.ts <= 12000 &&
+    isLikelyTranscriptEcho(turn.text, prior.text));
 }
 
 async function startLocalWhisper(settings) {
@@ -408,10 +423,7 @@ async function flushChannel(channel) {
       return;
     }
     if (res.text && res.text.trim() && res.text.trim().length > 1 && !/^[?!.,;:\-…]+$/.test(res.text.trim())) {
-      const turn = { channel, text: res.text.trim(), ts: Date.now() };
-      if (shouldSuppressMicEcho(turn)) return;
-      pushTranscript(turn);
-      send('transcript', turn);
+      publishTranscript(channel, res.text);
     }
   } catch (e) {
     console.log('[stt] error', e && e.message);
@@ -457,13 +469,7 @@ function initStreamingSTT() {
 
   ['you', 'them'].forEach((channel) => {
     const sttInstance = createStreamingSTT(settings, channel, {
-      onTranscript: (ch, text) => {
-        const turn = { channel: ch, text, ts: Date.now() };
-        if (shouldSuppressMicEcho(turn)) return;
-        pushTranscript(turn);
-        send('transcript', turn);
-        send('stt:final', { channel: ch, text });
-      },
+      onTranscript: publishTranscript,
       onInterim: (ch, text) => {
         send('stt:interim', { channel: ch, text });
       },
@@ -559,6 +565,7 @@ async function setCapturing(active) {
   if (active === state.capturing) return state.capturing;
 
   if (active) {
+    transcriptSessionStartedAt = Date.now();
     sttDisabled = false; // reset on re-enable
     lastAutoAnsweredQuestion = '';
     const settings = store.getSettings();

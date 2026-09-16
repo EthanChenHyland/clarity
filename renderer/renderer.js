@@ -459,7 +459,7 @@
   // ---- capture: mic (renderer side) — uses AudioWorklet (modern, off-main-thread) ----
   let audioCtx = null, micStream = null, micWorklet = null, micStarting = false;
   let micGeneration = 0;
-  async function startMic() {
+  async function startMic(recovering = false) {
     if (micStream || micStarting) return;
     micStarting = true;
     const generation = ++micGeneration;
@@ -503,6 +503,13 @@
         showStatus('No microphone audio track was available. Check System Settings → Sound for a working input device, then try again.');
         return;
       }
+      track.onended = () => {
+        if (generation !== micGeneration) return;
+        stopMic();
+        showStatus('Microphone disconnected. Reconnecting to the default input…', 4000);
+        if (!recovering) void startMic(true);
+        else showStatus('Microphone disconnected again. Reconnect it, then restart listening.');
+      };
       clarity.log('mic stream started: track=' + (track.label || '(no label — permission may be stale)') + ' muted=' + track.muted);
       audioCtx = new AudioContext({ sampleRate: 16000 });
       await audioCtx.resume();
@@ -625,6 +632,13 @@
         return;
       }
       sysStream = stream;
+      tracks.forEach(track => { track.onended = () => {
+        if (generation !== sysGeneration) return;
+        stopSystemAudio();
+        stopMic();
+        if ($('#stop-btn').classList.contains('active')) void clarity.captureToggle();
+        showStatus('System audio disconnected. Click Play to reconnect meeting audio.');
+      }; });
       sysCtx = new AudioContext({ sampleRate: 16000 });
       await sysCtx.resume();
       if (generation !== sysGeneration) return;
@@ -1075,6 +1089,10 @@
   clarity.on('llm:error', ({ message }) => {
     if (!aiEl) startAi(true);
     aiEl.dataset.raw = message; finalizeAi(); setBusy(false);
+  });
+  clarity.on('transcript:sync', (turns) => {
+    clearTranscriptSidebar();
+    for (const turn of turns) appendTranscriptHistoryTurn(turn.channel, turn.text, false);
   });
   clarity.on('transcript', ({ channel, text }) => {
     if (!text || text.trim().length < 2 || /^[?!.,;:\-…]+$/.test(text.trim())) return;

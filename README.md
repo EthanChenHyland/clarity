@@ -8,12 +8,12 @@ Clarity is an open-source macOS AI overlay for screen assistance, conversation t
 
 ## Release status
 
-**v0.2.9 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
+**v0.2.10 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
 
 | Mac | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.9-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.9/Clarity-0.2.9-mac-arm64.zip) |
-| Intel | [Clarity-0.2.9-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.9/Clarity-0.2.9-mac-x64.zip) |
+| Apple silicon (M-series) | [Clarity-0.2.10-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.10/Clarity-0.2.10-mac-arm64.zip) |
+| Intel | [Clarity-0.2.10-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.10/Clarity-0.2.10-mac-x64.zip) |
 
 Unzip the matching download and move `Clarity.app` to Applications. Both builds are **ad-hoc signed, not Developer ID-signed or notarized**. macOS may block them on first launch; passing a signature integrity check does not imply Gatekeeper approval. The release includes `SHA256SUMS.txt` for download-integrity checks. Building from source remains available below.
 
@@ -52,7 +52,7 @@ To produce both macOS apps and ZIPs:
 npm run dist:mac -- --arm64 --x64
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.9-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.9-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.10-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.10-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 
@@ -154,7 +154,7 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 251 tests. After packaging, verify bundle integrity:
+The current suite contains 255 tests. After packaging, verify bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app

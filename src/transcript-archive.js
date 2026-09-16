@@ -54,6 +54,18 @@ function createTranscriptArchive({ directory, now = Date.now } = {}) {
       return true;
     },
 
+    remove(turn) {
+      if (!current || !turn?.text) return false;
+      const stamp = new Date(Number(turn.ts) || now()).toISOString();
+      const text = String(turn.text).replace(/\s+/g, ' ').trim();
+      const line = `[${stamp}] ${turn.channel === 'them' ? 'Them' : 'You'}: ${text}\n`;
+      const contents = fs.readFileSync(current.file, 'utf8');
+      const at = contents.indexOf(line);
+      if (at < 0) return false;
+      fs.writeFileSync(current.file, contents.slice(0, at) + contents.slice(at + line.length), 'utf8');
+      return true;
+    },
+
     finish(endedAt = now()) {
       if (!current) return null;
       const finished = { ...current, endedAt };

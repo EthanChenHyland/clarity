@@ -40,18 +40,12 @@ function isLikelyTranscriptEcho(candidateText, remoteText) {
   const remote = normalizeTranscriptText(remoteText);
   if (candidate.length < 12 || remote.length < 12) return false;
 
-  // Acoustic echo usually preserves the remote utterance almost verbatim, but
-  // Whisper can append a few filler/hallucinated words to the mic copy.
-  if (candidate.includes(remote) && remote.length / candidate.length >= 0.65) return true;
-  if (remote.includes(candidate) && candidate.length / remote.length >= 0.85) return true;
-
-  const candidateWords = candidate.split(' ');
-  const remoteWords = remote.split(' ');
-  const remoteSet = new Set(remoteWords);
-  const shared = candidateWords.filter((word) => remoteSet.has(word)).length;
-  const shorter = Math.min(candidateWords.length, remoteWords.length);
-  const lengthRatio = Math.min(candidateWords.length, remoteWords.length) / Math.max(candidateWords.length, remoteWords.length);
-  return shorter >= 5 && shared / shorter >= 0.9 && lengthRatio >= 0.7;
+  // Preserve meaning-changing words and word order. Bag-of-words similarity
+  // incorrectly discarded replies containing negation or different pronouns.
+  if (candidate === remote) return true;
+  const trailingFillers = /^(?:you|yo|um|uh|hmm|ah)(?: (?:you|yo|um|uh|hmm|ah))*$/;
+  if (candidate.startsWith(remote + ' ')) return trailingFillers.test(candidate.slice(remote.length + 1));
+  return false;
 }
 
 module.exports = {
