@@ -634,7 +634,7 @@
         await sysCtx.audioWorklet.addModule('audio-worklet-processor.js');
         if (generation !== sysGeneration) return;
         const source = sysCtx.createMediaStreamSource(new MediaStream(tracks));
-        sysWorklet = new AudioWorkletNode(sysCtx, 'clarity-audio-processor');
+        sysWorklet = new AudioWorkletNode(sysCtx, 'clarity-audio-processor', { processorOptions: { maxGain: 4 } });
         sysWorklet.port.onmessage = (e) => {
           clarity.systemPcm(e.data);
         };
@@ -646,11 +646,13 @@
         // Fallback to ScriptProcessor
         clarity.log('system audio AudioWorklet failed, using ScriptProcessor: ' + workletErr.message);
         const sysNode = sysCtx.createMediaStreamSource(new MediaStream(tracks));
-        const sysProc = sysCtx.createScriptProcessor(4096, 1, 1);
+        const sysProc = sysCtx.createScriptProcessor(4096, Math.max(1, Math.min(2, sysNode.channelCount)), 1);
+        const conditioner = new window.ClarityAudio.AudioConditioner(4);
         const sink = sysCtx.createGain(); sink.gain.value = 0;
         sysNode.connect(sysProc); sysProc.connect(sink); sink.connect(sysCtx.destination);
         sysProc.onaudioprocess = (e) => {
-          const f = e.inputBuffer.getChannelData(0);
+          const channels = Array.from({ length: e.inputBuffer.numberOfChannels }, (_, i) => e.inputBuffer.getChannelData(i));
+          const f = conditioner.process(window.ClarityAudio.downmixToMono(channels));
           const out = new Int16Array(f.length);
           for (let i = 0; i < f.length; i++) { const s = Math.max(-1, Math.min(1, f[i])); out[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
           clarity.systemPcm(out.buffer);
