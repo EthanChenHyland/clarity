@@ -341,7 +341,7 @@ test('click-through wakes over native toolbar without renderer mouse events and 
     webContents: { getZoomFactor: () => 1 },
     getBounds: () => ({ x: 100, y: 200 }), setIgnoreMouseEvents: value => changes.push(value) };
   vm.runInNewContext(source.slice(source.indexOf('let toolbarWakeTimer'), source.indexOf('function isAllowedPaneUrl')), {
-    win, ipcMain: { on: (_name, callback) => { handler = callback; } },
+    win, windowDrag: null, ipcMain: { on: (_name, callback) => { handler = callback; } },
     isMainRendererSender: sender => sender === 'main', isForegroundYieldActive: () => yielding,
     screen: { getCursorScreenPoint: () => cursor }, send: channel => sent.push(channel),
     setInterval: callback => { tick = callback; return { unref() {} }; }, clearInterval() {}

@@ -1669,6 +1669,32 @@
     if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); openSettings(); }
   });
 
+  // Explicit pointer capture keeps the Drag pill usable with any panel open.
+  let dragPointer = null;
+  const dragPill = document.querySelector('.drag-pill');
+  dragPill.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || dragPointer !== null) return;
+    event.preventDefault();
+    dragPointer = event.pointerId;
+    dragPill.setPointerCapture(dragPointer);
+    setIgnore(false);
+    clarity.dragWindow('start');
+  });
+  dragPill.addEventListener('pointermove', (event) => {
+    if (event.pointerId === dragPointer) clarity.dragWindow('move');
+  });
+  const endWindowDrag = () => {
+    if (dragPointer === null) return;
+    const id = dragPointer;
+    dragPointer = null;
+    clarity.dragWindow('end');
+    if (dragPill.hasPointerCapture(id)) dragPill.releasePointerCapture(id);
+  };
+  dragPill.addEventListener('pointerup', endWindowDrag);
+  dragPill.addEventListener('pointercancel', endWindowDrag);
+  dragPill.addEventListener('lostpointercapture', endWindowDrag);
+  window.addEventListener('blur', endWindowDrag);
+
   // ---- click-through: only the UI blocks the mouse; empty gaps pass to your screen ----
   let ignoring = null;
   function setIgnore(v) {
@@ -1679,6 +1705,7 @@
   }
   clarity.on('mouse:interactive', () => { ignoring = false; });
   document.addEventListener('mousemove', (e) => {
+    if (dragPointer !== null) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overUI = !!(el && el.closest && el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim'));
     setIgnore(!overUI);

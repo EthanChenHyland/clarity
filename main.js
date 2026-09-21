@@ -870,11 +870,27 @@ ipcMain.on('mic:pcm', (event, arrayBuffer) => {
 ipcMain.on('system:pcm', (event, arrayBuffer) => {
   if (state.capturing && isMainRendererSender(event.sender) && isValidPcmPayload(arrayBuffer)) routeAudio('them', arrayBuffer);
 });
+let windowDrag = null;
+ipcMain.on('window:drag', (event, phase) => {
+  if (!isMainRendererSender(event.sender) || !win || win.isDestroyed()) return;
+  if (phase === 'end') { windowDrag = null; return; }
+  if (isForegroundYieldActive() || !win.isVisible()) { windowDrag = null; return; }
+  if (phase === 'start') {
+    windowDrag = { target: win, cursor: screen.getCursorScreenPoint(), bounds: win.getBounds() };
+    win.setIgnoreMouseEvents(false);
+    return;
+  }
+  if (phase !== 'move' || !windowDrag || windowDrag.target !== win) return;
+  const cursor = screen.getCursorScreenPoint();
+  win.setPosition(Math.round(windowDrag.bounds.x + cursor.x - windowDrag.cursor.x),
+    Math.round(windowDrag.bounds.y + cursor.y - windowDrag.cursor.y));
+});
 let toolbarWakeTimer = null;
 ipcMain.on('mouse:ignore', (event, ignored, toolbar) => {
   if (!isMainRendererSender(event.sender) || !win || win.isDestroyed()) return;
   if (toolbarWakeTimer) clearInterval(toolbarWakeTimer);
   toolbarWakeTimer = null;
+  if (windowDrag) return;
   win.setIgnoreMouseEvents(!!ignored, { forward: true });
   if (!ignored || !toolbar || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(toolbar[key]))) return;
   // Native drag regions swallow renderer mouse events. Wake the toolbar from

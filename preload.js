@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('clarity', {
   captureState: () => ipcRenderer.invoke('capture:state'),
   micPcm: (arrayBuffer) => ipcRenderer.send('mic:pcm', arrayBuffer),
   systemPcm: (arrayBuffer) => ipcRenderer.send('system:pcm', arrayBuffer),
+  dragWindow: (phase) => ipcRenderer.send('window:drag', phase),
   setIgnoreMouse: (v, toolbar) => ipcRenderer.send('mouse:ignore', v, toolbar),
   setSettingsPriority: (open) => ipcRenderer.send('window:settings-priority', !!open),
   beginNativePermissionPrompt: () => ipcRenderer.invoke('native-permission-prompt:begin'),

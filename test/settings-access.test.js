@@ -163,8 +163,8 @@ test('toolbar exposes help and a dedicated four-way drag handle', () => {
   assert.match(renderer, /\.drag-icon'\)\.innerHTML = icon\('move'/);
   assert.match(renderer, /#logo-btn[^\n]*addEventListener\('click', showOnboard\)/);
   assert.match(icons, /move:.*M12 2v20/);
-  assert.match(css, /\.drag-pill[\s\S]*-webkit-app-region:\s*drag/);
-  assert.match(css, /\.drag-pill[\s\S]*app-region:\s*drag/);
+  assert.match(css, /\.drag-pill[\s\S]*-webkit-app-region:\s*no-drag/);
+  assert.match(css, /\.drag-pill[\s\S]*app-region:\s*no-drag/);
   assert.match(css, /button[\s\S]*app-region:\s*no-drag/);
   assert.match(css, /\.drag-icon svg \{ pointer-events:\s*none; \}/);
   assert.match(renderer, /clarity\.on\('mouse:interactive'/);
