@@ -71,9 +71,8 @@ const DEFAULTS = {
     // (the previous default here) was retired by Google on 2026-03-03 and 404s
     // on every request. gemini-2.5-flash is current and free-tier available.
     gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
-    // OpenRouter defaults: Kimi K3 uses :nitro so the Fast tier prioritizes
-    // high-throughput providers, while Smart keeps the stronger GPT model.
-    custom: { fast: 'moonshotai/kimi-k3:nitro', smart: 'openai/gpt-5.6-sol' },
+    // OpenRouter defaults: Luna for Fast and Sol for Smart.
+    custom: { fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol' },
     ollama: { fast: 'llama3.2', smart: 'llama3.3' },
     groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },

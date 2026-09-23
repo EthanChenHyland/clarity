@@ -26,7 +26,7 @@ test('first-run onboarding is explicit and completing it preserves configured se
       sttProvider: 'local',
       smart: true,
       baseUrl: 'https://openrouter.ai/api/v1',
-      models: { custom: { fast: 'moonshotai/kimi-k3:nitro', smart: 'openai/gpt-5.6-sol' } }
+      models: { custom: { fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol' } }
     });
     store.setSettings({ onboarded: true });
 
@@ -36,8 +36,8 @@ test('first-run onboarding is explicit and completing it preserves configured se
     assert.equal(persisted.sttProvider, 'local');
     assert.equal(persisted.smart, true);
     assert.equal(persisted.baseUrl, 'https://openrouter.ai/api/v1');
-    assert.equal(persisted.models.custom.fast, 'moonshotai/kimi-k3:nitro');
-    assert.equal(persisted.models.custom.smart, 'openai/gpt-5.6-sol');
+    assert.equal(persisted.models.custom.fast, 'openai/gpt-6-luna');
+    assert.equal(persisted.models.custom.smart, 'openai/gpt-6-sol');
   } finally {
     Module._load = originalLoad;
     delete require.cache[require.resolve(storePath)];
