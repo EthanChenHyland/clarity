@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld('clarity', {
   appLinkRevoke: (callerId) => ipcRenderer.invoke('applink:revoke', callerId),
   appLinkConsentRespond: (id, allowed) => ipcRenderer.send('applink:consent-response', { id, allowed }),
   pickProfileDocument: () => ipcRenderer.invoke('profile:pickDocument'),
+  resourcesStatus: () => ipcRenderer.invoke('resources:status'),
+  resourcesRefresh: () => ipcRenderer.invoke('resources:refresh'),
   quit: () => ipcRenderer.send('app:quit'),
   restartApp: () => ipcRenderer.send('permissions:restart-app'),
   requestMicrophoneAccess: () => ipcRenderer.invoke('permissions:microphone'),
@@ -42,7 +44,7 @@ contextBridge.exposeInMainWorld('clarity', {
   permissionsContinue: () => ipcRenderer.send('permissions:continue'),
   log: (msg) => ipcRenderer.send('log', msg),
   on: (channel, cb) => {
-    const allowed = ['mouse:interactive', 'capture:state', 'llm:start', 'llm:token', 'llm:done', 'llm:error', 'status', 'transcript', 'transcript:sync', 'stt:interim', 'stt:final', 'stt:status', 'vad:state', 'applink:consent-request', 'hide:toggle', 'settings:open', 'whisper:download-progress', 'whisper:models-changed'];
+    const allowed = ['mouse:interactive', 'capture:state', 'llm:start', 'llm:token', 'llm:done', 'llm:error', 'status', 'transcript', 'transcript:sync', 'stt:interim', 'stt:final', 'stt:status', 'vad:state', 'applink:consent-request', 'hide:toggle', 'settings:open', 'whisper:download-progress', 'whisper:models-changed', 'resources:status'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, data) => cb(data));
   }

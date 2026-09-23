@@ -13,6 +13,7 @@ function harness(needsScreen = false) {
     store: { getSettings: () => ({ provider: 'test' }) },
     createLLM: () => ({ ready: true, stream: options => { streams.push(options); return new Promise(() => {}); } }),
     transcript: [], detectCategory: () => null, buildInterviewContext: () => '',
+    resourceContextIndex: null, appendResourceContext: (system) => system,
     send: (channel, data) => events.push({ channel, data }), recordEvent: () => {},
     isMac: true, systemPreferences: { getMediaAccessStatus: () => 'granted' }, win: null,
     captureScreenshot: () => new Promise(resolve => { resolveScreen = resolve; })

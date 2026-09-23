@@ -63,7 +63,7 @@ The tutorial opens first. Its second step, **Allow Clarity to see & hear**, cont
 1. **Microphone:** choose **Allow Microphone** to request access. If previously denied, this opens the relevant System Settings pane.
 2. **Screen & System Audio Recording:** open the privacy pane from the tutorial and enable Clarity. If necessary, use **+** to add `/Applications/Clarity.app`. Return with `⌘⇧/`, then choose **Check Screen & Audio access**. Restart Clarity if its running process still reports old access status.
 3. **Answer provider:** open **Settings → Keys**, choose a provider, and configure its credentials and models.
-4. **Speech-to-text:** open **Settings → Audio**. Local is the default; `small.en` is the recommended local accuracy/speed balance for meetings. Download it before starting listening. Smaller models such as `base.en` use fewer resources but are less accurate on compressed or noisy meeting audio. Alternatively, configure a supported cloud transcription provider.
+4. **Speech-to-text:** open **Settings → Audio**. Auto is the default low-latency path: it prefers Deepgram streaming, then OpenAI Realtime when those keys are configured. For private on-device transcription, choose Local and download `small.en`. Smaller models such as `base.en` use fewer resources but are less accurate on compressed or noisy meeting audio.
 
 Permission checks are passive; startup does not start a recording to force a permission prompt. Actual capture begins through Play or a screen-based action. The system-audio path supplies a display source without Apple's source picker, but macOS may still present native recording confirmations.
 
@@ -78,12 +78,18 @@ For OpenRouter, select **Custom**. The fields default to:
 | Field | Default |
 |---|---|
 | Base URL | `https://openrouter.ai/api/v1` |
-| Fast model | `openai/gpt-6-luna` |
+| Fast model | `deepseek/deepseek-v4.1-flash:nitro` |
 | Smart model | `openai/gpt-6-sol` |
 
 Enter your own OpenRouter API key. These are configured defaults, not a guarantee that either model is available to your account or supports screenshots. Replace them with supported model IDs as needed. Existing nonempty custom settings are preserved.
 
 **Answer models and transcription are separate.** OpenRouter/Custom credentials do not configure speech-to-text. Audio options are Local whisper.cpp, Deepgram, OpenAI, Gemini, or Auto selection among configured speech providers. Local mode does not silently fall back to cloud transcription.
+
+## Connected knowledge
+
+Settings → Profile can connect up to eight GitHub repositories as read-only knowledge sources. Public repositories need no token. Private repositories can use an optional fine-grained GitHub token with read-only **Contents** access.
+
+Clarity indexes supported text/code files into a local cache and retrieves only the excerpts relevant to the current interview question. Repository content is treated as untrusted reference data rather than instructions, so text inside a README, source comment, or prompt file cannot replace Clarity's system rules. The GitHub token is used only for repository access and is never inserted into model prompts.
 
 Two settings are **on by default**:
 

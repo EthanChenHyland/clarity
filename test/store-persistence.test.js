@@ -103,17 +103,19 @@ test('settings reject prototype keys without altering other objects', () => {
   } finally { fs.rmSync(parent, { recursive: true, force: true }); }
 });
 
-test('fresh users save transcripts and get live answers by default; explicit opt-outs survive reload', () => {
+test('fresh users default to low-latency auto STT while explicit choices survive reload', () => {
   const userData = fs.mkdtempSync(path.join(root, '.cache', 'defaults-'));
   try {
     let store = loadStore(userData);
     assert.equal(store.getSettings().saveTranscripts, true);
     assert.equal(store.getSettings().liveAnswerSuggestions, true);
+    assert.equal(store.getSettings().sttProvider, 'auto');
     assert.equal(store.getSettings().localWhisper.modelId, 'small.en');
-    store.setSettings({ saveTranscripts: false, liveAnswerSuggestions: false });
+    store.setSettings({ saveTranscripts: false, liveAnswerSuggestions: false, sttProvider: 'local' });
     store = loadStore(userData);
     assert.equal(store.getSettings().saveTranscripts, false);
     assert.equal(store.getSettings().liveAnswerSuggestions, false);
+    assert.equal(store.getSettings().sttProvider, 'local');
   } finally {
     delete require.cache[require.resolve(storePath)];
     fs.rmSync(userData, { recursive: true, force: true });
@@ -127,13 +129,18 @@ test('Custom defaults populate fresh and legacy empty settings while preserving 
     let store = loadStore(userData);
     assert.equal(store.getSettings().baseUrl, 'https://openrouter.ai/api/v1');
     assert.deepEqual(store.getSettings().models.custom, {
-      fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol'
+      fast: 'deepseek/deepseek-v4.1-flash:nitro', smart: 'openai/gpt-6-sol'
     });
     fs.writeFileSync(path.join(userData, 'clarity-data.json'), JSON.stringify({
       baseUrl: '', models: { custom: { fast: '', smart: '' } }
     }));
     store = loadStore(userData);
-    assert.equal(store.getSettings().models.custom.fast, 'openai/gpt-6-luna');
+    assert.equal(store.getSettings().models.custom.fast, 'deepseek/deepseek-v4.1-flash:nitro');
+    fs.writeFileSync(path.join(userData, 'clarity-data.json'), JSON.stringify({
+      baseUrl: 'https://openrouter.ai/api/v1', models: { custom: { fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol' } }
+    }));
+    store = loadStore(userData);
+    assert.equal(store.getSettings().models.custom.fast, 'deepseek/deepseek-v4.1-flash:nitro');
     store.setSettings({ baseUrl: 'https://example.com/v1', models: { custom: { fast: 'my-model', smart: '' } } });
     store = loadStore(userData);
     assert.equal(store.getSettings().baseUrl, 'https://example.com/v1');

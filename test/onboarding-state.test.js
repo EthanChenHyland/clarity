@@ -23,20 +23,20 @@ test('first-run onboarding is explicit and completing it preserves configured se
 
     store.setSettings({
       provider: 'custom',
-      sttProvider: 'local',
+      sttProvider: 'auto',
       smart: true,
       baseUrl: 'https://openrouter.ai/api/v1',
-      models: { custom: { fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol' } }
+      models: { custom: { fast: 'deepseek/deepseek-v4.1-flash:nitro', smart: 'openai/gpt-6-sol' } }
     });
     store.setSettings({ onboarded: true });
 
     const persisted = store.getSettings();
     assert.equal(persisted.onboarded, true);
     assert.equal(persisted.provider, 'custom');
-    assert.equal(persisted.sttProvider, 'local');
+    assert.equal(persisted.sttProvider, 'auto');
     assert.equal(persisted.smart, true);
     assert.equal(persisted.baseUrl, 'https://openrouter.ai/api/v1');
-    assert.equal(persisted.models.custom.fast, 'openai/gpt-6-luna');
+    assert.equal(persisted.models.custom.fast, 'deepseek/deepseek-v4.1-flash:nitro');
     assert.equal(persisted.models.custom.smart, 'openai/gpt-6-sol');
   } finally {
     Module._load = originalLoad;

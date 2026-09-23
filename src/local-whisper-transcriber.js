@@ -40,7 +40,9 @@ class LocalWhisperTranscriber {
         vadOptions: {
           onsetThreshold: isRemoteAudio ? 200 : 220,
           offsetThreshold: isRemoteAudio ? 120 : 130,
-          silenceFrames: isRemoteAudio ? 20 : 18
+          // Finish local utterances sooner for live use while keeping a little
+          // more trailing silence on remote/system audio to avoid chopped words.
+          silenceFrames: isRemoteAudio ? 16 : 14
         },
         onSpeechState: (speechChannel, speaking, durationMs) => {
           this.onSpeechState(speechChannel, speaking, durationMs);

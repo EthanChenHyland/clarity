@@ -517,7 +517,8 @@ test('screen permission status refreshes after returning from System Settings an
 test('README matches the current macOS setup, speech install, shortcuts, and picker-free capture flow', () => {
   const readme = read('README.md');
   assert.match(readme, /Current target: Apple silicon Macs/);
-  assert.match(readme, /Local is the default; `small\.en` is the recommended local accuracy\/speed balance/);
+  assert.match(readme, /Auto is the default low-latency path/);
+  assert.match(readme, /deepseek\/deepseek-v4\.1-flash:nitro/);
   assert.match(readme, /OpenRouter\/Custom credentials do not configure speech-to-text/);
   assert.match(readme, /without Apple's source picker/);
   assert.match(readme, /Screen & System Audio Recording/);
@@ -528,6 +529,32 @@ test('README matches the current macOS setup, speech install, shortcuts, and pic
   assert.match(readme, /ad-hoc signed/);
   assert.ok(readme.includes(`Clarity-${require('../package.json').version}-mac-x64.zip`));
   assert.match(readme, /Saved transcript text is written to Documents by default/);
+});
+
+test('conversation history uses an in-panel clear confirmation instead of a native/browser dialog', () => {
+  const html = read('renderer/index.html');
+  const renderer = read('renderer/renderer.js');
+  const css = read('renderer/styles.css');
+  assert.match(html, /id="history-clear-confirm"[\s\S]*id="history-clear-cancel"[\s\S]*id="history-clear-confirm-btn"/);
+  assert.match(renderer, /clearTranscriptBtn\?\.addEventListener\('click', openHistoryClearConfirm\)/);
+  assert.match(renderer, /historyClearConfirmBtn\?\.addEventListener\('click',[\s\S]*clarity\.clearTranscript\(\)/);
+  const clearBlock = renderer.slice(renderer.indexOf('// Clear transcript'), renderer.indexOf('// ---- capture: mic'));
+  assert.doesNotMatch(clearBlock, /window\.confirm|clearQuestionInput|showStartMessage/);
+  assert.match(css, /\.ts-confirm \{[\s\S]*position:\s*absolute[\s\S]*border-radius:\s*inherit/);
+});
+
+test('profile settings expose read-only GitHub knowledge indexing and answers retrieve cached excerpts', () => {
+  const html = read('renderer/index.html');
+  const renderer = read('renderer/renderer.js');
+  const preload = read('preload.js');
+  const main = read('main.js');
+  assert.match(html, /id="resource-repositories"[\s\S]*id="github-token"[\s\S]*id="refresh-resources"/);
+  assert.match(renderer, /clarity\.resourcesRefresh\(\)/);
+  assert.match(renderer, /settings\.resourceRepositories = resourceRepositoryValues\(\)/);
+  assert.match(preload, /resourcesStatus:\s*\(\)\s*=>\s*ipcRenderer\.invoke\('resources:status'\)/);
+  assert.match(preload, /resourcesRefresh:\s*\(\)\s*=>\s*ipcRenderer\.invoke\('resources:refresh'\)/);
+  assert.match(main, /resourceContextIndex\.search\(resourceQuery\)/);
+  assert.match(main, /appendResourceContext\(system, resourceMatches\)/);
 });
 
 test('main-process native file pickers cannot bypass the native UI coordinator', () => {

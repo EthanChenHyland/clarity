@@ -28,7 +28,7 @@ const DEFAULTS = {
   // across restarts while every other setting is preserved by deepMerge.
   onboarded: false,
   provider: 'openai',
-  sttProvider: 'local',
+  sttProvider: 'auto',
   localWhisper: {
     modelId: DEFAULT_MODEL_ID,
     language: 'auto',
@@ -48,6 +48,8 @@ const DEFAULTS = {
   // Tab 2: Profile
   resumeText: '',
   jobDescription: '',
+  resourceRepositories: [],
+  githubToken: '',
   // Tab 3: Interview Prep
   starStories: '',       // 3-5 behavioral STAR stories in plain English
   whyCompany: '',        // Why do you want to work here?
@@ -71,8 +73,8 @@ const DEFAULTS = {
     // (the previous default here) was retired by Google on 2026-03-03 and 404s
     // on every request. gemini-2.5-flash is current and free-tier available.
     gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
-    // OpenRouter defaults: Luna for Fast and Sol for Smart.
-    custom: { fast: 'openai/gpt-6-luna', smart: 'openai/gpt-6-sol' },
+    // OpenRouter defaults: DeepSeek V4.1 Flash routed for throughput, Sol for Smart.
+    custom: { fast: 'deepseek/deepseek-v4.1-flash:nitro', smart: 'openai/gpt-6-sol' },
     ollama: { fast: 'llama3.2', smart: 'llama3.3' },
     groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
     minimax: { fast: 'MiniMax-M2.7', smart: 'MiniMax-M3' },
@@ -106,6 +108,7 @@ function migrateSettings(settings) {
   if (normalizeBaseUrl(settings.baseUrl) === DEFAULTS.baseUrl) {
     const custom = settings.models.custom;
     if (!custom.fast || !custom.fast.trim()) custom.fast = DEFAULTS.models.custom.fast;
+    if (custom.fast === 'openai/gpt-6-luna') custom.fast = DEFAULTS.models.custom.fast;
     if (!custom.smart || !custom.smart.trim()) custom.smart = DEFAULTS.models.custom.smart;
   }
   const anthropic = settings.models && settings.models.anthropic;

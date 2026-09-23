@@ -105,7 +105,17 @@
       </div>
       <div class="ts-footer">
         <button class="ts-open-btn" id="open-transcripts-btn" title="Open saved transcript files">Open Saved</button>
-        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear the current on-screen history">Clear Current</button>
+        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear the current on-screen history"><span class="ic" aria-hidden="true"></span><span>Clear Current</span></button>
+      </div>
+      <div id="history-clear-confirm" class="ts-confirm hidden" role="dialog" aria-modal="true" aria-labelledby="history-clear-title" aria-describedby="history-clear-body">
+        <div class="ts-confirm-card">
+          <div id="history-clear-title" class="ts-confirm-title">Clear current conversation?</div>
+          <div id="history-clear-body" class="ts-confirm-body">This removes the current in-app conversation history. Saved transcript files stay on disk.</div>
+          <div class="ts-confirm-actions">
+            <button id="history-clear-cancel" class="ts-confirm-cancel" type="button">Cancel</button>
+            <button id="history-clear-confirm-btn" class="ts-confirm-delete" type="button">Clear</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -188,7 +198,7 @@
           <button data-stt-provider="openai">OpenAI</button>
           <button data-stt-provider="gemini">Gemini</button>
         </div>
-        <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
+        <div class="s-note"><strong>Auto is the low-latency choice:</strong> it prefers Deepgram streaming, then OpenAI Realtime when configured. Local keeps microphone and meeting audio on this computer and never silently falls back to cloud transcription.</div>
 
         <div class="s-toggle-row">
           <div>
@@ -250,6 +260,21 @@
         <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
         <div class="s-upload"><button class="s-action s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button><span class="s-filename" id="jd-filename"></span></div>
         <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. Clarity will highlight your most relevant experience."></textarea>
+
+        <div class="whisper-card resource-card">
+          <div class="whisper-runtime-row">
+            <span class="s-label">Connected knowledge</span>
+            <span id="resource-badge" class="whisper-badge">Not indexed</span>
+          </div>
+          <div class="s-note">Add up to 8 GitHub repositories, one URL per line. Clarity caches text/code locally and sends only question-relevant excerpts to your answer model.</div>
+          <textarea id="resource-repositories" rows="4" spellcheck="false" placeholder="https://github.com/owner/project&#10;https://github.com/owner/another-project"></textarea>
+          <div class="s-field"><span>GitHub token</span><input id="github-token" type="password" placeholder="optional · private repos" autocomplete="off" /></div>
+          <div class="s-note">Optional for public repos. For private repos, use a fine-grained token with read-only Contents access. The token stays in Clarity settings and is never added to AI prompts.</div>
+          <div class="whisper-actions">
+            <button id="refresh-resources" class="s-action" type="button">Save &amp; Refresh Index</button>
+          </div>
+          <div id="resource-status" class="s-status">No repositories connected.</div>
+        </div>
       </div>
 
       <!-- Tab: Interview Prep -->

@@ -435,26 +435,43 @@
 
   // Clear transcript
   const clearTranscriptBtn = document.getElementById('clear-transcript-btn');
-  if (clearTranscriptBtn) {
-    clearTranscriptBtn.addEventListener('click', async () => {
-      // Save current input to history before clearing (for undo)
-      saveToQuestionHistory(input.value);
-      
-      await clarity.clearTranscript();
-      showStartMessage();
-      // Also clear the floating interim bar
-      if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
-      // FIX #1: Use ts-list instead of non-existent transcript-list
-      const list = document.getElementById('ts-list');
-      if (list) list.innerHTML = '<div class="ts-placeholder">Conversation history will appear here when listening.</div>';
-      transcriptInterimEl = null;
-      clearTranscriptSidebar(); // clear the history sidebar too
-      clearQuestionInput(); // clear only the user's typed question
-      
-      const undoHint = isWindows ? 'Ctrl+Z to undo' : '⌘Z to undo';
-      showToast(`Conversation cleared · ${undoHint} restores your typed question only`, 3500);
-    });
+  const historyClearConfirm = document.getElementById('history-clear-confirm');
+  const historyClearCancel = document.getElementById('history-clear-cancel');
+  const historyClearConfirmBtn = document.getElementById('history-clear-confirm-btn');
+  function closeHistoryClearConfirm() {
+    historyClearConfirm?.classList.add('hidden');
+    clearTranscriptBtn?.focus();
   }
+  function openHistoryClearConfirm() {
+    if (!historyClearConfirm || !clearTranscriptBtn) return;
+    historyClearConfirm.classList.remove('hidden');
+    requestAnimationFrame(() => historyClearConfirmBtn?.focus());
+  }
+  clearTranscriptBtn?.addEventListener('click', openHistoryClearConfirm);
+  historyClearCancel?.addEventListener('click', closeHistoryClearConfirm);
+  historyClearConfirm?.addEventListener('click', (event) => {
+    if (event.target === historyClearConfirm) closeHistoryClearConfirm();
+  });
+  historyClearConfirmBtn?.addEventListener('click', async () => {
+    historyClearConfirmBtn.disabled = true;
+    try {
+      await clarity.clearTranscript();
+      if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
+      clearTranscriptSidebar();
+      showToast('Current conversation history cleared', 2200);
+      closeHistoryClearConfirm();
+    } catch (error) {
+      showToast(`Could not clear history: ${error.message}`, 3200);
+    } finally {
+      historyClearConfirmBtn.disabled = false;
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && historyClearConfirm && !historyClearConfirm.classList.contains('hidden')) {
+      event.preventDefault();
+      closeHistoryClearConfirm();
+    }
+  });
 
   // ---- capture: mic (renderer side) — uses AudioWorklet (modern, off-main-thread) ----
   let audioCtx = null, micStream = null, micWorklet = null, micStarting = false;
@@ -1345,6 +1362,9 @@
     // Profile tab
     $('#resume-text').value = settings.resumeText || '';
     $('#job-description').value = settings.jobDescription || '';
+    $('#resource-repositories').value = (settings.resourceRepositories || []).join('\n');
+    $('#github-token').value = settings.githubToken || '';
+    void refreshResourceStatus();
     // Interview Prep tab
     $('#star-stories').value = settings.starStories || '';
     $('#why-company').value = settings.whyCompany || '';
@@ -1411,6 +1431,62 @@
     $('#job-description').value = res.text || '';
     showStatus('Imported ' + res.fileName + ' — close Settings to save it.');
   });
+
+  function resourceRepositoryValues() {
+    return $('#resource-repositories').value
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  function renderResourceStatus(status) {
+    const badge = $('#resource-badge');
+    const label = $('#resource-status');
+    if (!badge || !label) return;
+    if (!status || status.error) {
+      badge.textContent = 'Error';
+      badge.className = 'whisper-badge error';
+      label.textContent = status?.error || 'Could not read the resource index.';
+      return;
+    }
+    if (!status.configured) {
+      badge.textContent = 'Not connected';
+      badge.className = 'whisper-badge';
+      label.textContent = 'No repositories connected.';
+      return;
+    }
+    badge.textContent = status.stale ? 'Refresh needed' : `${status.indexed}/${status.configured} indexed`;
+    badge.className = 'whisper-badge' + (status.errors?.length ? ' error' : (status.stale ? '' : ' ready'));
+    const updated = status.updatedAt ? ` · updated ${new Date(status.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}` : '';
+    const errors = status.errors?.length ? ` · ${status.errors.map((item) => `${item.repository}: ${item.message}`).join(' · ')}` : '';
+    label.textContent = `${status.files} files · ${status.chunks} searchable excerpts${updated}${errors}`;
+  }
+
+  async function refreshResourceStatus() {
+    if (!clarity.resourcesStatus) return;
+    try { renderResourceStatus(await clarity.resourcesStatus()); }
+    catch (error) { renderResourceStatus({ error: error.message }); }
+  }
+
+  $('#refresh-resources').addEventListener('click', async () => {
+    const button = $('#refresh-resources');
+    button.disabled = true;
+    $('#resource-status').textContent = 'Indexing connected repositories…';
+    try {
+      const patch = {
+        resourceRepositories: resourceRepositoryValues(),
+        githubToken: $('#github-token').value.trim()
+      };
+      settings = await clarity.settingsSet(patch);
+      renderResourceStatus(await clarity.resourcesRefresh());
+    } catch (error) {
+      renderResourceStatus({ error: error.message });
+    } finally {
+      button.disabled = false;
+    }
+  });
+  clarity.on('resources:status', renderResourceStatus);
 
   function statusText() {
     const k = settings.apiKeys;
@@ -1617,6 +1693,8 @@
     // Profile
     settings.resumeText = $('#resume-text').value.trim();
     settings.jobDescription = $('#job-description').value.trim();
+    settings.resourceRepositories = resourceRepositoryValues();
+    settings.githubToken = $('#github-token').value.trim();
     // Interview Prep
     settings.starStories = $('#star-stories').value.trim();
     settings.whyCompany = $('#why-company').value.trim();
@@ -1821,7 +1899,7 @@
     },
     {
       title: 'Install speech-to-text',
-      body: 'Listening needs a speech-to-text engine in addition to your answer model.<br><br><strong>Recommended private setup:</strong> open <span class="hl">Settings → Audio</span>, choose <strong>Local</strong>, select <strong>small.en</strong>, and click <strong>Download</strong>. It is a better accuracy/speed balance for real meetings than base.en. Wait until the model shows as installed before pressing Play.<br><br>You can instead choose <strong>Auto</strong>, <strong>Deepgram</strong>, <strong>OpenAI</strong>, or <strong>Gemini</strong> and provide the matching key. OpenRouter/Custom powers answers only; it does not transcribe speech.',
+      body: 'Listening needs a speech-to-text engine in addition to your answer model.<br><br><strong>Fastest live setup:</strong> open <span class="hl">Settings → Audio</span>, choose <strong>Auto</strong>, and configure Deepgram or OpenAI. Auto prefers streaming transcription, with Deepgram first. <strong>Private setup:</strong> choose <strong>Local</strong>, select <strong>small.en</strong>, and click <strong>Download</strong>.<br><br>OpenRouter/Custom powers answers only; it does not transcribe speech.',
       buttons: [{ label: 'Open Audio Settings', action: () => openSettings('transcription') }]
     },
     {

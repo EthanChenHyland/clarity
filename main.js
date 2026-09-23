@@ -19,6 +19,7 @@ const { buildInterviewContext, detectCategory } = require('./src/interview-conte
 const { isLikelyInterviewQuestion, collectRecentInterviewerQuestion, isLikelyTranscriptEcho } = require('./src/live-answer');
 const { startAppLink, stopAppLink, recordEvent, appLinkConsentState, revokeAppLinkCaller } = require('./src/applink');
 const { createTranscriptArchive } = require('./src/transcript-archive');
+const { ResourceContextIndex, appendResourceContext } = require('./src/resource-context');
 
 // Electron 44 defaults to CoreAudio Tap, which uses a separate audio-only
 // permission. Keep capture on ScreenCaptureKit so the permission users grant
@@ -92,6 +93,7 @@ const RMS_GATE = 180;
 const MAX_PCM_CHUNK_BYTES = 1024 * 1024;
 let flushTimer = null;
 let whisperModelManager = null;
+let resourceContextIndex = null;
 let localWhisperTranscriber = null;
 let activeWhisperModelId = null;
 let desiredCaptureState = false;
@@ -695,8 +697,18 @@ async function runFeature(mode, userText) {
 
     const settingsForPrompt = store.getSettings();
     const contextBlock = buildInterviewContext(settingsForPrompt, mode, transcript);
-    const system = def.buildSystem ? def.buildSystem(contextBlock, settingsForPrompt.aiRules || '') : (def.system || '');
+    let system = def.buildSystem ? def.buildSystem(contextBlock, settingsForPrompt.aiRules || '') : (def.system || '');
     const built = def.build({ transcript, userText: userText || '' });
+    if (mode !== 'leetcode' && resourceContextIndex) {
+      const recentQuestionContext = transcript
+        .filter((turn) => turn.channel === 'them')
+        .slice(-5)
+        .map((turn) => turn.text)
+        .join('\n');
+      const resourceQuery = [userText || '', recentQuestionContext].filter(Boolean).join('\n');
+      const resourceMatches = resourceContextIndex.search(resourceQuery);
+      system = appendResourceContext(system, resourceMatches);
+    }
 
     // Watchdog: a provider that stalls mid-stream would otherwise hang the await forever,
     // leaving state.busy = true and wedging every later question until an app restart.
@@ -752,14 +764,33 @@ async function runFeature(mode, userText) {
 ipcMain.handle('settings:get', () => store.getSettings());
 ipcMain.handle('settings:set', (_e, patch) => {
   sttDisabled = false;
-  const wasSaving = !!store.getSettings().saveTranscripts;
+  const previousSettings = store.getSettings();
+  const wasSaving = !!previousSettings.saveTranscripts;
   const updated = store.setSettings(patch);
   const isSaving = !!updated.saveTranscripts;
   if (state.capturing && wasSaving !== isSaving) {
     if (isSaving) startTranscriptArchive();
     else finishTranscriptArchive();
   }
+  const resourcesChanged = JSON.stringify(previousSettings.resourceRepositories || []) !== JSON.stringify(updated.resourceRepositories || []) ||
+    String(previousSettings.githubToken || '') !== String(updated.githubToken || '');
+  if (resourcesChanged && resourceContextIndex) {
+    resourceContextIndex.refresh(updated.resourceRepositories || [], { githubToken: updated.githubToken || '' })
+      .then((status) => send('resources:status', status))
+      .catch((error) => send('resources:status', { error: error.message }));
+  }
   return updated;
+});
+ipcMain.handle('resources:status', () => {
+  if (!resourceContextIndex) return { configured: 0, indexed: 0, files: 0, chunks: 0, updatedAt: null, stale: false, errors: [] };
+  return resourceContextIndex.status(store.getSettings().resourceRepositories || []);
+});
+ipcMain.handle('resources:refresh', async () => {
+  if (!resourceContextIndex) throw new Error('Resource index is not ready yet.');
+  const settings = store.getSettings();
+  const status = await resourceContextIndex.refresh(settings.resourceRepositories || [], { githubToken: settings.githubToken || '' });
+  send('resources:status', status);
+  return status;
 });
 function requestCapturing(targetState) {
   desiredCaptureState = targetState;
@@ -1365,7 +1396,15 @@ function launchApp() {
   if (isMac && app.dock) app.dock.hide();
 
   whisperModelManager = new WhisperModelManager({ userDataPath: app.getPath('userData') });
+  resourceContextIndex = new ResourceContextIndex({ cachePath: path.join(app.getPath('userData'), 'resource-index.json') });
   transcriptArchive = createTranscriptArchive({ directory: path.join(app.getPath('documents'), 'Clarity Transcripts') });
+  const resourceSettings = store.getSettings();
+  const resourceStatus = resourceContextIndex.status(resourceSettings.resourceRepositories || []);
+  if ((resourceSettings.resourceRepositories || []).length && resourceStatus.stale) {
+    resourceContextIndex.refresh(resourceSettings.resourceRepositories, { githubToken: resourceSettings.githubToken || '' })
+      .then((status) => send('resources:status', status))
+      .catch((error) => recordEvent({ level: 'error', event: 'resource_index_failed', msg: error.message, frame: 'launchApp' }));
+  }
 
   const isTrustedMediaRenderer = (webContents, details = {}) => {
     if (!win || win.isDestroyed() || !webContents || webContents.id !== win.webContents.id) return false;
