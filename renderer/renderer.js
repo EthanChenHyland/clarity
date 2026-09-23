@@ -438,12 +438,26 @@
   const historyClearConfirm = document.getElementById('history-clear-confirm');
   const historyClearCancel = document.getElementById('history-clear-cancel');
   const historyClearConfirmBtn = document.getElementById('history-clear-confirm-btn');
+  const historyClearStatus = document.getElementById('history-clear-status');
+  let historyClearStatusTimer = null;
+  function showHistoryClearStatus(message, kind = 'success', ms = 2200) {
+    if (!historyClearStatus) return;
+    clearTimeout(historyClearStatusTimer);
+    historyClearStatus.textContent = message;
+    historyClearStatus.classList.remove('hidden', 'success', 'error');
+    historyClearStatus.classList.add(kind);
+    historyClearStatusTimer = setTimeout(() => {
+      historyClearStatus.classList.add('hidden');
+      historyClearStatus.classList.remove('success', 'error');
+    }, ms);
+  }
   function closeHistoryClearConfirm() {
     historyClearConfirm?.classList.add('hidden');
     clearTranscriptBtn?.focus();
   }
   function openHistoryClearConfirm() {
     if (!historyClearConfirm || !clearTranscriptBtn) return;
+    historyClearStatus?.classList.add('hidden');
     historyClearConfirm.classList.remove('hidden');
     requestAnimationFrame(() => historyClearConfirmBtn?.focus());
   }
@@ -458,10 +472,11 @@
       await clarity.clearTranscript();
       if (interimEl) { interimEl.textContent = ''; interimEl.classList.remove('show'); }
       clearTranscriptSidebar();
-      showToast('Current conversation history cleared', 2200);
       closeHistoryClearConfirm();
+      showHistoryClearStatus('Current conversation history cleared');
     } catch (error) {
-      showToast(`Could not clear history: ${error.message}`, 3200);
+      closeHistoryClearConfirm();
+      showHistoryClearStatus(`Could not clear history: ${error.message}`, 'error', 3200);
     } finally {
       historyClearConfirmBtn.disabled = false;
     }

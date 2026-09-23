@@ -537,11 +537,15 @@ test('conversation history uses an in-panel clear confirmation instead of a nati
   const renderer = read('renderer/renderer.js');
   const css = read('renderer/styles.css');
   assert.match(html, /id="history-clear-confirm"[\s\S]*id="history-clear-cancel"[\s\S]*id="history-clear-confirm-btn"/);
+  assert.match(html, /id="history-clear-status"[^>]*role="status"[^>]*aria-live="polite"/);
   assert.match(renderer, /clearTranscriptBtn\?\.addEventListener\('click', openHistoryClearConfirm\)/);
   assert.match(renderer, /historyClearConfirmBtn\?\.addEventListener\('click',[\s\S]*clarity\.clearTranscript\(\)/);
+  assert.match(renderer, /showHistoryClearStatus\('Current conversation history cleared'\)/);
+  assert.doesNotMatch(renderer, /showToast\('Current conversation history cleared'/);
   const clearBlock = renderer.slice(renderer.indexOf('// Clear transcript'), renderer.indexOf('// ---- capture: mic'));
   assert.doesNotMatch(clearBlock, /window\.confirm|clearQuestionInput|showStartMessage/);
   assert.match(css, /\.ts-confirm \{[\s\S]*position:\s*absolute[\s\S]*border-radius:\s*inherit/);
+  assert.match(css, /\.ts-inline-status \{[\s\S]*text-align:\s*center/);
 });
 
 test('profile settings expose read-only GitHub knowledge indexing and answers retrieve cached excerpts', () => {
