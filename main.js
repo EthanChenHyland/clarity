@@ -1147,6 +1147,10 @@ app.on('browser-window-focus', (_event, focusedWindow) => {
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('permissions:restart-app', (event) => {
   if (!isMainRendererSender(event.sender) && (!permWin || permWin.isDestroyed() || event.sender.id !== permWin.webContents.id)) return;
+  // app.relaunch() starts the replacement before this process has fully exited.
+  // Release our single-instance lock first so the new Clarity process can acquire
+  // it instead of mistaking the still-shutting-down process for the primary app.
+  if (app.hasSingleInstanceLock()) app.releaseSingleInstanceLock();
   app.relaunch();
   app.quit();
 });
@@ -1521,6 +1525,13 @@ app.whenReady().then(async () => {
     if (externalSettingsActive && Date.now() < externalSettingsRestoreAfter) return;
     returnToClarity();
   });
+});
+
+app.on('before-quit', () => {
+  // macOS Privacy settings can perform its own Quit & Reopen after a grant.
+  // Let that replacement instance take the lock as soon as this process starts
+  // shutting down instead of making it lose the race and exit immediately.
+  if (app.hasSingleInstanceLock()) app.releaseSingleInstanceLock();
 });
 
 app.on('will-quit', () => {

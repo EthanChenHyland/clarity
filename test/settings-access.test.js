@@ -78,6 +78,7 @@ test('quit button calls the exposed quit action and app enforces one instance', 
   assert.match(renderer, /#quit-btn[^\n]*addEventListener\('click', \(\) => clarity\.quit\(\)\)/);
   assert.match(main, /requestSingleInstanceLock\(\)/);
   assert.match(main, /second-instance/);
+  assert.match(main, /app\.on\('before-quit'[\s\S]*hasSingleInstanceLock\(\)[\s\S]*releaseSingleInstanceLock\(\)/);
 });
 
 test('saved transcripts have an IPC bridge and an Open Saved control', () => {
@@ -506,7 +507,7 @@ test('screen permission status refreshes after returning from System Settings an
 
   assert.match(main, /externalSettingsPane = \/Privacy_ScreenCapture\$\/i\.test\(url\) \? 'screen' : 'microphone'/);
   assert.match(main, /webContents\.send\('permissions:refresh', \{ pane \}\)/);
-  assert.match(main, /ipcMain\.on\('permissions:restart-app'[\s\S]*app\.relaunch\(\)[\s\S]*app\.quit\(\)/);
+  assert.match(main, /ipcMain\.on\('permissions:restart-app'[\s\S]*hasSingleInstanceLock\(\)[\s\S]*releaseSingleInstanceLock\(\)[\s\S]*app\.relaunch\(\)[\s\S]*app\.quit\(\)/);
   assert.match(preload, /restartApp:\s*\(\)\s*=>\s*ipcRenderer\.send\('permissions:restart-app'\)/);
   assert.match(preload, /onPermissionsRefresh:[\s\S]*ipcRenderer\.on\('permissions:refresh'/);
   assert.match(permissions, /screenCheckAttempted = true/);
