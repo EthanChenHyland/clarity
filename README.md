@@ -1,23 +1,24 @@
 # Clarity
 
-Clarity is an open-source macOS AI overlay for screen assistance, conversation transcription, and suggested responses. Bring your own AI provider credentials and choose local or cloud speech-to-text.
+Clarity is an open-source desktop AI overlay for macOS and Windows with screen assistance, conversation transcription, and suggested responses. Bring your own AI provider credentials and choose local or cloud speech-to-text.
 
-**Current target: Apple silicon Macs and Intel Macs.** Separate arm64 and x64 builds are available. Intel hardware has not received the same interactive testing as Apple silicon. System-audio capture targets macOS 14.4 or later. Windows and Linux are not validated release targets.
+**Current target: Apple silicon Macs, Intel Macs, and Windows x64.** macOS system-audio capture targets macOS 14.4 or later. Windows packaging and the bundled local speech runtime are exercised on `windows-latest` in CI; Windows capture/audio behavior should still be field-tested on the exact conferencing setup you plan to use. Linux is not a validated release target.
 
 [Releases](https://github.com/EthanChenHyland/clarity/releases) · [Issues](https://github.com/EthanChenHyland/clarity/issues) · [Verification notes](docs/permission-verification.md)
 
 ## Release status
 
-**v0.2.14 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
+**v0.2.15 includes separate macOS builds, a Windows x64 installer, and source archives.**
 
-| Mac | Download |
+| Platform | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.14-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.14/Clarity-0.2.14-mac-arm64.zip) |
-| Intel | [Clarity-0.2.14-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.14/Clarity-0.2.14-mac-x64.zip) |
+| Apple silicon (M-series) | [Clarity-0.2.15-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-mac-arm64.zip) |
+| Intel Mac | [Clarity-0.2.15-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-mac-x64.zip) |
+| Windows 10/11 x64 | [Clarity-0.2.15-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-win-x64.exe) |
 
-Unzip the matching download and move `Clarity.app` to Applications. Both builds are **ad-hoc signed, not Developer ID-signed or notarized**. macOS may block them on first launch; passing a signature integrity check does not imply Gatekeeper approval. The release includes `SHA256SUMS.txt` for download-integrity checks. Building from source remains available below.
+On macOS, unzip the matching build and move `Clarity.app` to Applications. The Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may warn on first launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. The release includes `SHA256SUMS.txt` for download-integrity checks.
 
-Automated tests and installed-app onboarding checks pass. Live provider responses and end-to-end transcription with fresh macOS permissions still require testing with configured credentials and a downloaded speech model. See the [verification notes](docs/permission-verification.md) for the scope and remaining limitations.
+Automated tests pass on supported Node versions, Windows packaging runs on `windows-latest`, and the Windows whisper.cpp runtime is downloaded, checksum-verified, launched, and smoke-tested in CI. Live provider responses plus end-to-end capture with real conferencing software still require field testing on each target OS. See the [verification notes](docs/permission-verification.md) for the current macOS permission scope and remaining limitations.
 
 ## Features
 
@@ -36,7 +37,7 @@ Screen-share exclusion is **best-effort**. Some capture tools can include Clarit
 
 ## Build and run
 
-Prerequisites: Node.js 22.12 or later, npm, CMake, and Xcode command-line tools. Preparing the pinned whisper.cpp runtime downloads and builds its source.
+Prerequisites: Node.js 22.12 or later and npm. macOS source builds of the pinned whisper.cpp runtime also require CMake and Xcode command-line tools; Windows uses the checksum-pinned upstream x64 runtime archive.
 
 ```bash
 git clone https://github.com/EthanChenHyland/clarity.git
@@ -46,28 +47,38 @@ npm run prepare:whisper
 npm start
 ```
 
-To produce both macOS apps and ZIPs:
+To produce release packages:
 
 ```bash
+# macOS (run on a Mac)
 npm run dist:mac -- --arm64 --x64
+
+# Windows x64 (run on Windows; CI does this for tagged releases)
+npm run dist:win
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.14-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.14-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.15-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.15-mac-x64.zip`; Windows output is `dist/Clarity-0.2.15-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 
 ## First launch
 
-The tutorial opens first. Its second step, **Allow Clarity to see & hear**, contains the permission controls. A separate permission-recovery window appears on later launches if onboarding is complete but access is missing.
+The tutorial opens first. Its second step, **Allow Clarity to see & hear**, contains platform-specific permission controls.
 
-1. **Microphone:** choose **Allow Microphone** to request access. If previously denied, this opens the relevant System Settings pane.
-2. **Screen & System Audio Recording:** open the privacy pane from the tutorial and enable Clarity. If necessary, use **+** to add `/Applications/Clarity.app`. Return with `⌘⇧/`, then choose **Check Screen & Audio access**. Restart Clarity if its running process still reports old access status.
-3. **Answer provider:** open **Settings → Keys**, choose a provider, and configure its credentials and models.
-4. **Speech-to-text:** open **Settings → Audio**. Auto is the default low-latency path: it prefers Deepgram streaming, then OpenAI Realtime when those keys are configured. For private on-device transcription, choose Local and download `small.en`. Smaller models such as `base.en` use fewer resources but are less accurate on compressed or noisy meeting audio.
+**macOS**
+1. **Microphone:** choose **Allow Microphone**. If access was previously denied, Clarity opens the relevant System Settings pane.
+2. **Screen & System Audio Recording:** enable Clarity in **System Settings → Privacy & Security → Screen & System Audio Recording**. Return with `⌘⇧/`, then choose **Check Screen & Audio access**; restart Clarity if macOS still reports stale access.
 
-Permission checks are passive; startup does not start a recording to force a permission prompt. Actual capture begins through Play or a screen-based action. The system-audio path supplies a display source without Apple's source picker, but macOS may still present native recording confirmations.
+**Windows 10/11 x64**
+1. Use **Open Microphone settings** and allow microphone access for desktop apps/Clarity.
+2. Windows 11 also exposes **Screen recording** privacy settings from onboarding. On Windows 10, screen capture does not require that extra privacy toggle.
+3. System audio uses Chromium loopback capture from the active display/output path. If the Them channel is silent, verify the active Windows output device and disable exclusive-mode use by other apps before retrying Play.
 
-Reopen the tutorial with **Help**. Its footer includes **Quit Clarity** between Back and Next. Clarity intentionally has no Dock icon.
+On both platforms, configure the answer provider under **Settings → Keys** and speech-to-text under **Settings → Audio**. Auto is the default low-latency path: it prefers Deepgram streaming, then OpenAI Realtime when those keys are configured. For private on-device transcription, choose Local and download `small.en`.
+
+Permission checks are passive; startup does not start recording just to probe access. Actual capture begins through Play or a screen-based action. On macOS, Clarity supplies the display source without Apple's source picker; macOS may still present native recording confirmations.
+
+Reopen the tutorial with **Help**. Its footer includes **Quit Clarity** between Back and Next. Clarity intentionally has no Dock icon on macOS and stays out of the Windows taskbar/Alt+Tab surface as an overlay.
 
 ## Providers and defaults
 
@@ -98,18 +109,18 @@ Two settings are **on by default**:
 
 ## Controls
 
-| Action | Default shortcut |
-|---|---|
-| Assist | `⌘↵` |
-| What to Say | `⌘⇧↵` |
-| Solve Code | `⌘H` |
-| Follow-up | `⌘J` |
-| Recap | `⌘K` |
-| Settings | `⌘,` |
-| Hide / show Clarity | `⌘⇧/` |
-| Quit | `⌘⇧X` |
-| Zoom in / out (Clarity focused) | `⌘+` / `⌘−` |
-| Reset zoom to 100% | `⌘0` |
+| Action | macOS | Windows |
+|---|---|---|
+| Assist | `⌘↵` | `Ctrl+↵` |
+| What to Say | `⌘⇧↵` | `Ctrl+Shift+↵` |
+| Solve Code | `⌘H` | `Ctrl+H` |
+| Follow-up | `⌘J` | `Ctrl+J` |
+| Recap | `⌘K` | `Ctrl+K` |
+| Settings | `⌘,` | `Ctrl+,` |
+| Hide / show Clarity | `⌘⇧/` | `Ctrl+Shift+/` |
+| Quit | `⌘⇧X` | `Ctrl+Shift+X` |
+| Zoom in / out (Clarity focused) | `⌘+` / `⌘−` | `Ctrl+` / `Ctrl−` |
+| Reset zoom to 100% | `⌘0` | `Ctrl+0` |
 
 Settings → Audio → Save transcripts includes an Open Folder button that opens a native transcript browser. File browsers hide Clarity while open and restore it when dismissed, including model and PDF/DOCX imports.
 
@@ -125,7 +136,7 @@ AI responses render Markdown headings, lists, tables, and code, plus LaTeX math 
 
 Clarity does not require a Clarity account or hosted backend. It connects to the providers you configure and downloads speech runtime/model files when requested.
 
-- Settings, API keys, and profile text are stored in `~/Library/Application Support/Clarity/clarity-data.json`. This is a plaintext file with owner-only permissions, **not Keychain storage**.
+- Settings, API keys, and profile text are stored in Electron's per-user data directory (`~/Library/Application Support/Clarity/clarity-data.json` on macOS and `%APPDATA%\Clarity\clarity-data.json` on Windows). This is a plaintext file with user-only filesystem permissions, **not Keychain/Credential Manager storage**.
 - Custom requests, including the Custom key, go to the configured Base URL.
 - Screenshots, conversation text, and relevant profile context can be sent to the selected answer provider. Local transcription does not make cloud answer requests local.
 - Local speech inference keeps audio on your computer. Cloud transcription sends audio to the selected speech provider; Auto can fall back among configured speech providers.
@@ -134,21 +145,23 @@ Clarity does not require a Clarity account or hosted backend. It connects to the
 
 ## Troubleshooting
 
-**Listening produces no transcript:** check the Audio provider, installed local model or cloud speech key, and both macOS permissions. An answer-provider key alone is insufficient.
+**Listening produces no transcript:** check the Audio provider, installed local model or cloud speech key, and the platform microphone/capture permissions. An answer-provider key alone is insufficient.
 
-**Access is enabled but Clarity reports it off:** verify that System Settings lists the installed copy, then restart Clarity. A rebuild can affect the identity macOS associates with previous grants.
+**macOS access is enabled but Clarity reports it off:** verify that System Settings lists the installed copy, then restart Clarity. A rebuild can affect the identity macOS associates with previous grants.
 
-**A recording dialog remains open:** do not start another capture request. Quit Clarity and handle the native macOS dialog. A stuck system-owned dialog is a known unresolved edge case; Clarity cannot guarantee it can dismiss it.
+**A recording dialog remains open on macOS:** do not start another capture request. Quit Clarity and handle the native system dialog. A stuck system-owned dialog is a known unresolved edge case; Clarity cannot guarantee it can dismiss it.
 
-**Clarity freezes:** use the tutorial or toolbar Quit button if the interface still responds. If it is fully frozen, force quit the Clarity process in Activity Monitor. An in-app button cannot recover a blocked renderer.
+**Clarity freezes:** use the tutorial or toolbar Quit button if the interface still responds. If it is fully frozen, force quit Clarity in Activity Monitor (macOS) or Task Manager (Windows). An in-app button cannot recover a blocked renderer.
 
-**Local runtime is missing:** install CMake and Xcode command-line tools, run `npm run prepare:whisper`, and restart. Download the selected speech model separately in Audio settings.
+**Local runtime is missing:** run `npm run prepare:whisper` and restart. macOS source preparation additionally requires CMake and Xcode command-line tools. Windows downloads the checksum-pinned x64 runtime archive. Download the selected speech model separately in Audio settings.
 
 **`npm start` reports `getPath` is undefined:** clear `ELECTRON_RUN_AS_NODE` from the shell environment and retry.
 
 **A model request fails:** check the endpoint, credentials, model ID, permissions, and image-input support. Model defaults do not verify provider availability.
 
-**A downloaded app is blocked by macOS:** the attached builds are ad-hoc signed and not notarized. Building locally is an alternative. Do not disable Gatekeeper globally; a checksum verifies file integrity, not Apple approval.
+**A downloaded app is blocked by macOS:** the attached Mac builds are ad-hoc signed and not notarized. Building locally is an alternative. Do not disable Gatekeeper globally; a checksum verifies file integrity, not Apple approval.
+
+**Windows SmartScreen warns about the installer:** the current Windows installer is not Authenticode-signed. Verify its SHA-256 against `SHA256SUMS.txt` before choosing the Windows option to continue.
 
 ## Development and release checks
 
@@ -160,13 +173,13 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 262 tests. After packaging, verify bundle integrity:
+The current suite contains 276 tests. After packaging, verify the macOS bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app
 ```
 
-Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered release workflow builds Apple silicon and only uploads its ZIP when signing configuration is present. The ad-hoc macOS assets are manually built and attached. No certificate is configured in the local development environment.
+Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered workflow builds the Windows x64 NSIS installer on `windows-latest` and uploads it to the release. It also builds Apple silicon as a release check; macOS CI upload remains gated on complete signing/notarization credentials, so local ad-hoc Mac ZIPs are attached manually when no certificate is configured.
 
 The project uses Electron with plain HTML, CSS, and JavaScript: `main.js` owns windows and IPC, `renderer/` contains the UI and audio capture, and `src/` contains providers, transcription, storage, and supporting logic. Review the loopback compatibility configuration before upgrading Electron to 45 or later.
 

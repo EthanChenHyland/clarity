@@ -517,18 +517,19 @@ test('screen permission status refreshes after returning from System Settings an
 
 test('README matches the current macOS setup, speech install, shortcuts, and picker-free capture flow', () => {
   const readme = read('README.md');
-  assert.match(readme, /Current target: Apple silicon Macs/);
+  assert.match(readme, /Current target: Apple silicon Macs, Intel Macs, and Windows x64/);
   assert.match(readme, /Auto is the default low-latency path/);
   assert.match(readme, /deepseek\/deepseek-v4\.1-flash:nitro/);
   assert.match(readme, /OpenRouter\/Custom credentials do not configure speech-to-text/);
   assert.match(readme, /without Apple's source picker/);
   assert.match(readme, /Screen & System Audio Recording/);
-  assert.match(readme, /Follow-up \| `⌘J`/);
-  assert.match(readme, /Recap \| `⌘K`/);
+  assert.match(readme, /Follow-up \| `⌘J` \| `Ctrl\+J`/);
+  assert.match(readme, /Recap \| `⌘K` \| `Ctrl\+K`/);
   assert.match(readme, /Live Interview/);
   assert.match(readme, /Conversation History/);
   assert.match(readme, /ad-hoc signed/);
   assert.ok(readme.includes(`Clarity-${require('../package.json').version}-mac-x64.zip`));
+  assert.ok(readme.includes(`Clarity-${require('../package.json').version}-win-x64.exe`));
   assert.match(readme, /Saved transcript text is written to Documents by default/);
 });
 
