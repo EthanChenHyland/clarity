@@ -136,7 +136,7 @@ AI responses render Markdown headings, lists, tables, and code, plus LaTeX math 
 
 Clarity does not require a Clarity account or hosted backend. It connects to the providers you configure and downloads speech runtime/model files when requested.
 
-- Settings, API keys, and profile text are stored in Electron's per-user data directory (`~/Library/Application Support/Clarity/clarity-data.json` on macOS and `%APPDATA%\Clarity\clarity-data.json` on Windows). This is a plaintext file with user-only filesystem permissions, **not Keychain/Credential Manager storage**.
+- Settings, API keys, and profile text are stored in Electron's per-user data directory (`~/Library/Application Support/Clarity/clarity-data.json` on macOS and `%APPDATA%\Clarity\clarity-data.json` on Windows). This is a plaintext file, **not Keychain/Credential Manager storage**. Clarity writes mode `0600` on POSIX systems; on Windows, access control comes from the user's profile/NTFS ACLs.
 - Custom requests, including the Custom key, go to the configured Base URL.
 - Screenshots, conversation text, and relevant profile context can be sent to the selected answer provider. Local transcription does not make cloud answer requests local.
 - Local speech inference keeps audio on your computer. Cloud transcription sends audio to the selected speech provider; Auto can fall back among configured speech providers.

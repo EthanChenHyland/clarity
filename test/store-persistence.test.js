@@ -88,7 +88,12 @@ test('malformed settings are preserved before defaults can replace them', () => 
     const backup = fs.readdirSync(parent).find(name => name.startsWith('clarity-data.json.recovery-'));
     assert.ok(backup);
     assert.equal(fs.readFileSync(path.join(parent, backup), 'utf8'), recoverable);
-    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    // POSIX mode bits are meaningful on macOS/Linux. Windows protects files
+    // through the user profile's ACLs and Node reports synthetic mode bits.
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    }
+    assert.doesNotThrow(() => JSON.parse(fs.readFileSync(file, 'utf8')));
   } finally { fs.rmSync(parent, { recursive: true, force: true }); }
 });
 
