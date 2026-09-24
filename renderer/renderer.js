@@ -1430,6 +1430,21 @@
     }
   }
 
+  const copyDiagnosticsBtn = document.getElementById('copy-diagnostics');
+  if (copyDiagnosticsBtn) copyDiagnosticsBtn.addEventListener('click', async () => {
+    const status = document.getElementById('diagnostics-status');
+    copyDiagnosticsBtn.disabled = true;
+    if (status) status.textContent = 'Collecting diagnostics…';
+    try {
+      await clarity.copyDiagnostics();
+      if (status) status.textContent = 'Copied. Safe to paste into a bug report.';
+    } catch (error) {
+      if (status) status.textContent = 'Could not copy diagnostics: ' + error.message;
+    } finally {
+      copyDiagnosticsBtn.disabled = false;
+    }
+  });
+
   const uploadResumeBtn = document.getElementById('upload-resume-btn');
   if (uploadResumeBtn) uploadResumeBtn.addEventListener('click', async () => {
     const res = await clarity.pickProfileDocument();
@@ -2044,6 +2059,11 @@
     }
 
     const st = await clarity.captureState();
+    const savedTurns = await clarity.transcriptGet();
+    if (Array.isArray(savedTurns) && savedTurns.length) {
+      clearTranscriptSidebar();
+      for (const turn of savedTurns) appendTranscriptHistoryTurn(turn.channel, turn.text, false);
+    }
     $('#live-dot').classList.toggle('off', !st.active);
     updateCaptureButton(st.active);
     if (!settings.onboarded) showOnboard();

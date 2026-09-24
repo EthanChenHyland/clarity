@@ -8,13 +8,13 @@ Clarity is an open-source desktop AI overlay for macOS and Windows with screen a
 
 ## Release status
 
-**v0.2.15 includes separate macOS builds, a Windows x64 installer, and source archives.**
+**v0.2.16 includes separate macOS builds, a Windows x64 installer, crash recovery, privacy-safe diagnostics, and source archives.**
 
 | Platform | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.15-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-mac-arm64.zip) |
-| Intel Mac | [Clarity-0.2.15-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-mac-x64.zip) |
-| Windows 10/11 x64 | [Clarity-0.2.15-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.15/Clarity-0.2.15-win-x64.exe) |
+| Apple silicon (M-series) | [Clarity-0.2.16-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-mac-arm64.zip) |
+| Intel Mac | [Clarity-0.2.16-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-mac-x64.zip) |
+| Windows 10/11 x64 | [Clarity-0.2.16-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-win-x64.exe) |
 
 On macOS, unzip the matching build and move `Clarity.app` to Applications. The Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may warn on first launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. The release includes `SHA256SUMS.txt` for download-integrity checks.
 
@@ -57,7 +57,7 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.15-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.15-mac-x64.zip`; Windows output is `dist/Clarity-0.2.15-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.16-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.16-mac-x64.zip`; Windows output is `dist/Clarity-0.2.16-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 
@@ -173,13 +173,15 @@ node --check renderer/renderer.js
 git diff --check
 ```
 
-The current suite contains 276 tests. After packaging, verify the macOS bundle integrity:
+The test suite covers provider behavior, capture lifecycle, renderer recovery, privacy-safe diagnostics, Windows packaging, and persistence. After packaging, verify the macOS bundle integrity:
 
 ```bash
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app
 ```
 
-Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered workflow builds the Windows x64 NSIS installer on `windows-latest` and uploads it to the release. It also builds Apple silicon as a release check; macOS CI upload remains gated on complete signing/notarization credentials, so local ad-hoc Mac ZIPs are attached manually when no certificate is configured.
+Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered workflow builds Windows x64 plus both Apple silicon and Intel macOS packages. All packages are retained as workflow artifacts. The Windows installer is uploaded to the release automatically; macOS release upload remains gated on complete signing/notarization credentials, so unsigned CI builds cannot replace a signed public asset.
+
+Settings includes **Copy Diagnostics**, which copies a privacy-safe JSON snapshot for bug reports. It includes version, OS, permission state, selected models/providers, runtime/resource health, and shortcut registration status while excluding API keys, tokens, transcript text, résumé text, and repository URLs.
 
 The project uses Electron with plain HTML, CSS, and JavaScript: `main.js` owns windows and IPC, `renderer/` contains the UI and audio capture, and `src/` contains providers, transcription, storage, and supporting logic. Review the loopback compatibility configuration before upgrading Electron to 45 or later.
 

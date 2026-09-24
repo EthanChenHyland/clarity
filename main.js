@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences, clipboard } = require('electron');
 const path = require('path');
 const os = require('os');
 const PRODUCT_NAME = 'Clarity';
@@ -30,6 +30,8 @@ const {
 const { startAppLink, stopAppLink, recordEvent, appLinkConsentState, revokeAppLinkCaller } = require('./src/applink');
 const { createTranscriptArchive } = require('./src/transcript-archive');
 const { ResourceContextIndex, appendResourceContext } = require('./src/resource-context');
+const { buildDiagnosticSnapshot, formatDiagnosticReport } = require('./src/diagnostics');
+const { planRendererRecovery } = require('./src/renderer-recovery');
 
 // Electron 44 defaults to CoreAudio Tap, which uses a separate audio-only
 // permission. Keep capture on ScreenCaptureKit so the permission users grant
@@ -114,6 +116,8 @@ let captureTransition = Promise.resolve(false);
 let liveAnswerTimer = null;
 let lastAutoAnsweredQuestion = '';
 let transcriptArchive = null;
+let rendererRecoveryHistory = [];
+let pendingRendererRecoveryNotice = '';
 
 // -------- streaming STT state --------
 let streamingSTT = { you: null, them: null }; // streaming STT instances per channel
@@ -152,7 +156,15 @@ function pushTranscript(turn) {
   scheduleLiveAnswer(turn);
 }
 
-function send(channel, data) { if (win && !win.isDestroyed()) win.webContents.send(channel, data); }
+function send(channel, data) {
+  try {
+    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+      win.webContents.send(channel, data);
+    }
+  } catch (error) {
+    console.log('[Clarity] renderer send failed', channel, error && error.message);
+  }
+}
 
 function scheduleLiveAnswer(turn) {
   clearTimeout(liveAnswerTimer);
@@ -444,6 +456,10 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => {
     win.showInactive();
     win.setTitle(PRODUCT_NAME);
+    if (pendingRendererRecoveryNotice) {
+      send('status', { message: pendingRendererRecoveryNotice });
+      pendingRendererRecoveryNotice = '';
+    }
     // Warn about missing content protection on old Windows builds
     if (isWindows && shouldProtect && !WIN_SUPPORTS_CONTENT_PROTECTION) {
       send('status', {
@@ -454,6 +470,28 @@ function createWindow() {
   win.webContents.on('render-process-gone', (_e, d) => {
     console.log('[Clarity] renderer gone', JSON.stringify(d));
     recordEvent({ level: 'fatal', event: 'renderer_gone', code: d && d.reason, msg: 'renderer process ended: ' + JSON.stringify(d), frame: 'BrowserWindow' });
+    const plan = planRendererRecovery(rendererRecoveryHistory, Date.now(), d && d.reason);
+    rendererRecoveryHistory = plan.history;
+    if (plan.action !== 'reload') {
+      if (plan.action === 'stop') {
+        recordEvent({ level: 'fatal', event: 'renderer_recovery_stopped', msg: 'automatic renderer recovery stopped after repeated crashes', frame: 'BrowserWindow' });
+      }
+      return;
+    }
+    const wasCapturing = state.capturing || desiredCaptureState;
+    pendingRendererRecoveryNotice = wasCapturing
+      ? 'Clarity recovered from a renderer crash. Listening was stopped for safety; press Play to resume.'
+      : 'Clarity recovered from a renderer crash.';
+    desiredCaptureState = false;
+    requestCapturing(false)
+      .catch((error) => console.log('[Clarity] renderer recovery capture stop failed', error && error.message))
+      .finally(() => {
+        setTimeout(() => {
+          if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+            win.webContents.reload();
+          }
+        }, 250);
+      });
   });
 }
 
@@ -929,6 +967,39 @@ function requestCapturing(targetState) {
 }
 ipcMain.handle('capture:toggle', () => requestCapturing(!desiredCaptureState));
 ipcMain.handle('capture:state', () => ({ active: state.capturing }));
+ipcMain.handle('transcript:get', () => transcript.map((turn) => ({ ...turn })));
+ipcMain.handle('diagnostics:copy', async () => {
+  const settings = store.getSettings();
+  const permissions = await getPermissionStatus();
+  const runtime = getWhisperRuntime();
+  const resources = resourceContextIndex
+    ? resourceContextIndex.status(settings.resourceRepositories || [])
+    : null;
+  const snapshot = buildDiagnosticSnapshot({
+    appVersion: app.getVersion(),
+    platform: process.platform,
+    release: os.release(),
+    arch: process.arch,
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    settings,
+    permissions,
+    state,
+    transcriptTurns: transcript.length,
+    sttDisabled,
+    shortcuts: shortcutState,
+    resources,
+    whisperRuntime: runtime,
+    windows: isWindows
+      ? {
+          build: WIN_BUILD,
+          contentProtectionSupported: WIN_SUPPORTS_CONTENT_PROTECTION,
+        }
+      : null,
+  });
+  clipboard.writeText(formatDiagnosticReport(snapshot));
+  return { ok: true };
+});
 ipcMain.handle('whisper:models', () => getWhisperOverview());
 ipcMain.handle('whisper:model-download', async (_event, modelId) => {
   if (!whisperModelManager) throw new Error('The local Whisper model manager is not ready.');
@@ -1406,7 +1477,16 @@ function getScreenPermissionStatus() {
 }
 
 async function getPermissionStatus() {
-  if (process.platform !== 'darwin') return { mic: 'granted', screen: 'granted' };
+  if (isWindows) {
+    return {
+      mic: systemPreferences.getMediaAccessStatus('microphone'),
+      // Electron documents screen access as always granted on Windows. Windows
+      // privacy/security software can still block capture at runtime, which is
+      // reported separately by the capture error path.
+      screen: 'granted',
+    };
+  }
+  if (!isMac) return { mic: 'granted', screen: 'granted' };
   return {
     mic: systemPreferences.getMediaAccessStatus('microphone'),
     // IMPORTANT: this must stay passive. Enumerating screen sources can display

@@ -20,6 +20,7 @@ test('Windows app identity and settings links are explicit', () => {
   assert.match(main, /app\.setAppUserModelId\('com\.clarity\.overlay'\)/);
   assert.match(main, /ms-settings:privacy-\(\?:microphone\|screenrecorder\)/);
   assert.match(main, /privacy-screenrecorder\)\$\/i/);
+  assert.match(main, /isWindows[\s\S]*getMediaAccessStatus\('microphone'\)/);
 });
 
 test('Windows whisper ZIP extraction uses argv-safe tar.exe instead of PowerShell command parsing', () => {
@@ -33,6 +34,13 @@ test('tagged releases build and upload a Windows installer on a Windows runner',
   assert.match(workflow, /windows-release:[\s\S]*runs-on: windows-latest/);
   assert.match(workflow, /windows-release:[\s\S]*npm run dist:win/);
   assert.match(workflow, /windows-release:[\s\S]*dist\/\*\.exe/);
+  assert.match(workflow, /clarity-windows-\$\{\{ github\.ref_name \}\}/);
+});
+
+test('tagged releases validate both macOS architectures and preserve packages', () => {
+  const workflow = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/release.yml'), 'utf8');
+  assert.match(workflow, /npm run dist:mac -- --arm64 --x64/);
+  assert.match(workflow, /clarity-macos-\$\{\{ github\.ref_name \}\}/);
 });
 
 test('ships every runtime directory in packaged builds', () => {

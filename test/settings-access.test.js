@@ -91,6 +91,18 @@ test('saved transcripts have an IPC bridge and an Open Saved control', () => {
   assert.match(main, /Clarity Transcripts/);
 });
 
+test('settings exposes privacy-safe copyable diagnostics and transcript recovery', () => {
+  const html = read('renderer/index.html');
+  const renderer = read('renderer/renderer.js');
+  const preload = read('preload.js');
+  const main = read('main.js');
+  assert.match(html, /id="copy-diagnostics"/);
+  assert.match(preload, /copyDiagnostics: \(\) => ipcRenderer\.invoke\('diagnostics:copy'\)/);
+  assert.match(main, /ipcMain\.handle\('diagnostics:copy'/);
+  assert.match(preload, /transcriptGet: \(\) => ipcRenderer\.invoke\('transcript:get'\)/);
+  assert.match(renderer, /const savedTurns = await clarity\.transcriptGet\(\)/);
+});
+
 test('transcript disk archiving defaults on and remains user-controlled', () => {
   const html = read('renderer/index.html');
   const renderer = read('renderer/renderer.js');

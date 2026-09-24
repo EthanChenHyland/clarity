@@ -186,6 +186,15 @@
         <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what Clarity is doing</span></label>
         <div class="s-callers" id="applink-callers"></div>
 
+        <div class="whisper-card">
+          <div class="whisper-runtime-row">
+            <span class="s-label">Diagnostics</span>
+            <button id="copy-diagnostics" class="s-action" type="button">Copy Diagnostics</button>
+          </div>
+          <div class="s-note">Copies app, OS, permission, model, shortcut, and runtime status for bug reports. API keys, transcript text, résumé text, tokens, and repository URLs are excluded.</div>
+          <div class="s-status" id="diagnostics-status"></div>
+        </div>
+
         <div class="s-status" id="s-status"></div>
       </div>
 

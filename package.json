@@ -1,6 +1,6 @@
 {
   "name": "clarity",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "description": "Open-source real-time AI overlay for macOS and Windows with screen, microphone, and system-audio assistance.",
   "license": "GPL-3.0-or-later",
   "author": "Clarity contributors",

@@ -41,7 +41,7 @@ jobs:
 
       - name: Build macOS
         if: matrix.os == 'macos-latest'
-        run: npm run dist:mac -- --arm64
+        run: npm run dist:mac -- --arm64 --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # electron-builder.cjs signs and notarizes only when MAC_SIGN=1; without
@@ -52,6 +52,13 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Preserve macOS packages as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clarity-macos-${{ github.ref_name }}
+          path: dist/*.zip
+          if-no-files-found: error
 
       - name: Upload to GitHub Release
         # Skipped on macOS until signing is configured, so an ad-hoc build can
@@ -86,6 +93,13 @@ jobs:
 
       - name: Build Windows installer
         run: npm run dist:win
+
+      - name: Preserve Windows installer as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clarity-windows-${{ github.ref_name }}
+          path: dist/*.exe
+          if-no-files-found: error
 
       - name: Upload Windows installer to GitHub Release
         uses: softprops/action-gh-release@v2
