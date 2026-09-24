@@ -117,11 +117,12 @@ function extractZipArchive(archivePath, extractionDirectory) {
   // ZIP inputs are checksum-pinned before reaching this function. Prefer the
   // platform extractor over the unmaintained extract-zip npm package.
   if (process.platform === 'win32') {
-    execFileSync('powershell.exe', [
-      '-NoProfile', '-NonInteractive', '-Command',
-      'Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force',
-      archivePath, extractionDirectory
-    ], { stdio: 'inherit', windowsHide: true });
+    // Windows 10+ ships bsdtar as tar.exe. Passing the paths as argv avoids the
+    // PowerShell -Command parsing bug that made $args empty in GitHub Actions.
+    execFileSync('tar.exe', ['-xf', archivePath, '-C', extractionDirectory], {
+      stdio: 'inherit',
+      windowsHide: true
+    });
     return;
   }
   execFileSync('unzip', ['-q', archivePath, '-d', extractionDirectory], {

@@ -505,7 +505,7 @@ test('screen permission status refreshes after returning from System Settings an
   const preload = read('preload-permissions.js');
   const permissions = read('renderer/permissions.js');
 
-  assert.match(main, /externalSettingsPane = \/Privacy_ScreenCapture\$\/i\.test\(url\) \? 'screen' : 'microphone'/);
+  assert.match(main, /externalSettingsPane = \/\(\?:Privacy_ScreenCapture\|privacy-screenrecorder\)\$\/i\.test\(url\) \? 'screen' : 'microphone'/);
   assert.match(main, /webContents\.send\('permissions:refresh', \{ pane \}\)/);
   assert.match(main, /ipcMain\.on\('permissions:restart-app'[\s\S]*hasSingleInstanceLock\(\)[\s\S]*releaseSingleInstanceLock\(\)[\s\S]*app\.relaunch\(\)[\s\S]*app\.quit\(\)/);
   assert.match(preload, /restartApp:\s*\(\)\s*=>\s*ipcRenderer\.send\('permissions:restart-app'\)/);

@@ -659,7 +659,7 @@
         clarity.log('system audio: no loopback track on this platform');
         stream.getTracks().forEach((t) => t.stop());
         showStatus(clarity.platform === 'win32'
-          ? 'No system-audio loopback track detected. Make sure "Share audio" is checked in the screen share dialog, and that your audio device is not in exclusive mode.'
+          ? 'Windows did not provide a system-audio loopback track. Check your active output device, close apps using audio in exclusive mode, then click Play again.'
           : 'No system-audio track was returned. In System Settings → Privacy & Security → Screen & System Audio Recording, make sure Clarity is enabled, then restart Clarity. Your microphone can still work without the Them channel.');
         return;
       }

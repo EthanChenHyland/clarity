@@ -3,7 +3,10 @@ const path = require('path');
 const os = require('os');
 const PRODUCT_NAME = 'Clarity';
 app.setName(PRODUCT_NAME);
-if (process.platform === 'win32') process.title = PRODUCT_NAME;
+if (process.platform === 'win32') {
+  process.title = PRODUCT_NAME;
+  app.setAppUserModelId('com.clarity.overlay');
+}
 const store = require('./src/store');
 const { abortable } = require('./src/abortable');
 const { nextZoomFactor } = require('./src/ui-zoom');
@@ -1244,7 +1247,7 @@ ipcMain.on('open-pane', async (_e, url) => {
     return;
   }
 
-  externalSettingsPane = /Privacy_ScreenCapture$/i.test(url) ? 'screen' : 'microphone';
+  externalSettingsPane = /(?:Privacy_ScreenCapture|privacy-screenrecorder)$/i.test(url) ? 'screen' : 'microphone';
   try {
     await yieldToExternalSettings();
     await shell.openExternal(url, isMac ? { activate: true } : undefined);

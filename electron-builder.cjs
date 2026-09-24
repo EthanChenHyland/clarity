@@ -66,7 +66,8 @@ module.exports = {
   },
   win: {
     target: [{ target: "nsis", arch: ["x64"] }],
-    artifactName: "${productName}-win-${arch}.${ext}",
+    icon: "build-resources/icon.ico",
+    artifactName: "${productName}-${version}-win-${arch}.${ext}",
   },
   // A per-user install with a visible directory step: Clarity is a personal overlay,
   // not a machine-wide service, so it should never need an elevation prompt.

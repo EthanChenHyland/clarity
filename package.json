@@ -1,7 +1,7 @@
 {
   "name": "clarity",
   "version": "0.2.14",
-  "description": "Open-source macOS real-time AI overlay for screen, microphone, and system-audio assistance.",
+  "description": "Open-source real-time AI overlay for macOS and Windows with screen, microphone, and system-audio assistance.",
   "license": "GPL-3.0-or-later",
   "author": "Clarity contributors",
   "main": "main.js",
@@ -13,8 +13,8 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac zip",
     "dist:mac": "electron-builder --mac zip",
-    "dist:win": "electron-builder --win",
-    "pack:win": "electron-builder --win --dir",
+    "dist:win": "electron-builder --win --publish never",
+    "pack:win": "electron-builder --win --dir --publish never",
     "dist:linux": "electron-builder --linux AppImage --x64",
     "dist:linux:arm64": "electron-builder --linux AppImage --arm64",
     "prepare:renderer": "node scripts/prepare-renderer.js",
@@ -27,7 +27,9 @@
     "ai",
     "assistant",
     "macos",
-    "apple-silicon"
+    "apple-silicon",
+    "windows",
+    "windows-11"
   ],
   "devDependencies": {
     "electron": "^44.3.0",
