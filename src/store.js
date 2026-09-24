@@ -40,7 +40,7 @@ const DEFAULTS = {
   // same answerThis flow used by manual interview answers. Users can turn this
   // off in Interview Prep; every automatic answer consumes an LLM request.
   liveAnswerSuggestions: true,
-  liveAnswerDelayMs: 1200,
+  liveAnswerDelayMs: 700,
   baseUrl: 'https://openrouter.ai/api/v1',
   minimaxRegion: 'global_en',
   apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '', custom: '', ollama: '', groq: '', minimax: '' , azure: '' },

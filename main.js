@@ -11,12 +11,19 @@ const { captureScreenshot } = require('./src/screen');
 const { createSTT, buildVocabPrompt } = require('./src/stt');
 const { parseDocumentFile } = require('./src/resume');
 const { createLLM } = require('./src/llm');
+const { streamWithSmartFallback } = require('./src/live-answer-stream');
 const { MODES } = require('./src/prompts');
 const { rms16 } = require('./src/wav');
 const { createStreamingSTT } = require('./src/stt-streaming');
 const { AdaptiveVAD, AudioRingBuffer } = require('./src/vad');
 const { buildInterviewContext, detectCategory } = require('./src/interview-context');
-const { isLikelyInterviewQuestion, collectRecentInterviewerQuestion, isLikelyTranscriptEcho } = require('./src/live-answer');
+const {
+  isLikelyInterviewQuestion,
+  collectRecentInterviewerQuestion,
+  questionsEquivalent,
+  shouldReplaceLiveAnswerQuestion,
+  isLikelyTranscriptEcho
+} = require('./src/live-answer');
 const { startAppLink, stopAppLink, recordEvent, appLinkConsentState, revokeAppLinkCaller } = require('./src/applink');
 const { createTranscriptArchive } = require('./src/transcript-archive');
 const { ResourceContextIndex, appendResourceContext } = require('./src/resource-context');
@@ -88,6 +95,9 @@ const transcript = []; // { channel, text, ts } — capped at MAX_TRANSCRIPT_TUR
 const MAX_TRANSCRIPT_TURNS = 200; // ~30–40 minutes of conversation at normal pace
 const FLUSH_MS = 900;
 const STREAM_INACTIVITY_MS = 25000; // abort a stalled LLM stream so state.busy can't wedge forever
+const LIVE_ANSWER_INTERIM_STABLE_MS = 650;
+const LIVE_ANSWER_STREAMING_FINAL_MS = 250;
+const LIVE_ANSWER_FAST_FALLBACK_MS = 3000;
 const MIN_BYTES = Math.floor(16000 * 2 * 0.12); // ~0.12s
 const RMS_GATE = 180;
 const MAX_PCM_CHUNK_BYTES = 1024 * 1024;
@@ -105,6 +115,8 @@ let transcriptArchive = null;
 // -------- streaming STT state --------
 let streamingSTT = { you: null, them: null }; // streaming STT instances per channel
 let streamingMode = false; // true when using WebSocket streaming STT
+let streamingGeneration = 0;
+const failedStreamingProviders = new Set();
 const vad = {
   you: new AdaptiveVAD({
     onsetThreshold: 220,
@@ -145,29 +157,70 @@ function scheduleLiveAnswer(turn) {
 
   // If the candidate has started talking, do not interrupt them with an answer
   // generated from an earlier fragment of the interviewer's speech.
-  if (!turn || turn.channel !== 'them') return;
+  if (!turn || turn.channel !== 'them') {
+    if (turn?.channel === 'you' && activeResponseMeta?.autoLiveAnswer) stopResponse();
+    return;
+  }
+
+  const question = collectRecentInterviewerQuestion(transcript);
+  scheduleLiveAnswerQuestion(question, { source: 'final', observedAt: turn.ts });
+}
+
+function scheduleLiveAnswerInterim(channel, text) {
+  if (channel === 'you') {
+    clearTimeout(liveAnswerTimer);
+    liveAnswerTimer = null;
+    if (activeResponseMeta?.autoLiveAnswer) stopResponse();
+    return;
+  }
+  if (channel !== 'them' || !String(text || '').trim()) return;
+  const observedAt = Date.now();
+  const question = collectRecentInterviewerQuestion(transcript, { interimText: text, interimTs: observedAt });
+  scheduleLiveAnswerQuestion(question, { source: 'interim', observedAt });
+}
+
+function scheduleLiveAnswerQuestion(question, { source = 'final', observedAt = Date.now() } = {}) {
+  clearTimeout(liveAnswerTimer);
+  liveAnswerTimer = null;
 
   const settings = store.getSettings();
   if (!settings.liveAnswerSuggestions || !state.capturing) return;
-  const delay = Math.max(650, Math.min(4000, Number(settings.liveAnswerDelayMs) || 1200));
+  if (!isLikelyInterviewQuestion(question)) return;
+
+  if (activeResponseMeta?.autoLiveAnswer) {
+    if (questionsEquivalent(activeResponseMeta.question, question)) return;
+    if (shouldReplaceLiveAnswerQuestion(activeResponseMeta.question, question)) stopResponse();
+    else return;
+  }
+
+  if (questionsEquivalent(question, lastAutoAnsweredQuestion)) return;
+  const configuredDelay = Math.max(250, Math.min(900, Number(settings.liveAnswerDelayMs) || 700));
+  const delay = source === 'interim'
+    ? LIVE_ANSWER_INTERIM_STABLE_MS
+    : (streamingMode ? LIVE_ANSWER_STREAMING_FINAL_MS : configuredDelay);
 
   liveAnswerTimer = setTimeout(() => {
     liveAnswerTimer = null;
     const currentSettings = store.getSettings();
     if (!currentSettings.liveAnswerSuggestions || !state.capturing) return;
-    const question = collectRecentInterviewerQuestion(transcript);
-    if (!isLikelyInterviewQuestion(question) || question === lastAutoAnsweredQuestion) return;
+    if (!isLikelyInterviewQuestion(question) || questionsEquivalent(question, lastAutoAnsweredQuestion)) return;
 
     // If another answer is still streaming, retry shortly rather than dropping
     // the interviewer question. A newer transcript turn will cancel this timer.
     if (state.busy) {
-      liveAnswerTimer = setTimeout(() => scheduleLiveAnswer(turn), 900);
+      liveAnswerTimer = setTimeout(() => scheduleLiveAnswerQuestion(question, { source, observedAt }), 350);
       return;
     }
 
     lastAutoAnsweredQuestion = question;
     send('status', { message: 'Live Answer: drafting a reply to the interviewer…' });
-    runFeature('answerThis', question);
+    runFeature('answerThis', question, {
+      autoLiveAnswer: true,
+      question,
+      source,
+      observedAt,
+      triggeredAt: Date.now()
+    });
   }, delay);
 }
 
@@ -465,20 +518,38 @@ function startFlushLoop() {
 function stopFlushLoop() { if (flushTimer) { clearInterval(flushTimer); flushTimer = null; } }
 
 // -------- streaming STT setup --------
+function normalizeStreamingProvider(provider) {
+  return provider === 'openai-realtime' ? 'openai' : String(provider || '').toLowerCase();
+}
+
 function initStreamingSTT() {
   const settings = store.getSettings();
   streamingMode = false;
+  const generation = ++streamingGeneration;
 
   ['you', 'them'].forEach((channel) => {
     const sttInstance = createStreamingSTT(settings, channel, {
       onTranscript: publishTranscript,
       onInterim: (ch, text) => {
         send('stt:interim', { channel: ch, text });
+        scheduleLiveAnswerInterim(ch, text);
       },
       onError: (err) => {
+        if (generation !== streamingGeneration) return;
         console.log('[streaming-stt] error', err.provider, err.message);
+        const failedProvider = normalizeStreamingProvider(err.provider);
+        if ((settings.sttProvider || 'auto') === 'auto' && failedProvider) {
+          failedStreamingProviders.add(failedProvider);
+          stopStreamingSTT();
+          if (initStreamingSTT()) {
+            send('status', { message: `Streaming transcription (${err.provider}) failed. Switching to the next streaming provider.` });
+            return;
+          }
+        } else {
+          stopStreamingSTT();
+        }
+
         const batchFallbackAvailable = createSTT(settings).available;
-        stopStreamingSTT(); // close WebSockets and clear keep-alive intervals
         if (batchFallbackAvailable) {
           send('status', { message: `Streaming transcription (${err.provider}) error: ${err.message}. Falling back to batch mode.` });
           startFlushLoop();
@@ -494,7 +565,7 @@ function initStreamingSTT() {
           console.log(`[streaming-stt] ${ch} channel connected`);
         }
       }
-    });
+    }, { skipProviders: [...failedStreamingProviders] });
 
     if (sttInstance.type === 'streaming' && sttInstance.instance) {
       streamingMode = true;
@@ -507,6 +578,7 @@ function initStreamingSTT() {
 }
 
 function stopStreamingSTT() {
+  streamingGeneration += 1;
   ['you', 'them'].forEach((channel) => {
     if (streamingSTT[channel]) {
       streamingSTT[channel].disconnect();
@@ -570,6 +642,7 @@ async function setCapturing(active) {
     transcriptSessionStartedAt = Date.now();
     sttDisabled = false; // reset on re-enable
     lastAutoAnsweredQuestion = '';
+    failedStreamingProviders.clear();
     const settings = store.getSettings();
     if ((settings.sttProvider || 'auto') === 'local') {
       try {
@@ -639,22 +712,29 @@ async function setCapturing(active) {
 
 // -------- feature runner --------
 let activeResponseController = null;
+let activeResponseMeta = null;
 function stopResponse() {
   clearTimeout(liveAnswerTimer);
   liveAnswerTimer = null;
   activeResponseController?.abort();
 }
-async function runFeature(mode, userText) {
+async function runFeature(mode, userText, runOptions = {}) {
   if (state.busy) return;
   const def = MODES[mode];
   if (!def) return;
   state.busy = true;
   const streamController = new AbortController();
   activeResponseController = streamController;
+  activeResponseMeta = runOptions.autoLiveAnswer
+    ? { autoLiveAnswer: true, question: runOptions.question || userText || '', source: runOptions.source || 'final' }
+    : { autoLiveAnswer: false };
   let streamSettled = false; // drop stray tokens from a stream we've already abandoned
+  let firstTokenAt = 0;
+  let winningModel = null;
   try {
     const settings = store.getSettings();
     const llm = createLLM(settings);
+    winningModel = llm.model;
     const userBubble = def.userBubble !== null
       ? def.userBubble
       : (mode === 'ask' ? userText : mode === 'answerThis' ? `"${(userText || '').slice(0, 60)}${userText && userText.length > 60 ? '…' : ''}"` : null);
@@ -730,15 +810,55 @@ async function runFeature(mode, userText) {
           turns: [{ role: 'user', text: built }],
           imageDataUrl,
           onProgress: () => { if (!streamSettled && !streamController.signal.aborted) rearm(); },
-          onToken: (t) => { if (streamSettled || streamController.signal.aborted) return; rearm(); send('llm:token', { text: t }); }
+          onToken: (t) => {
+            if (streamSettled || streamController.signal.aborted) return;
+            rearm();
+            if (!firstTokenAt) {
+              firstTokenAt = Date.now();
+              if (runOptions.autoLiveAnswer) {
+                recordEvent({
+                  level: 'info',
+                  event: 'live_answer_latency',
+                  frame: 'runFeature',
+                  context: {
+                    source: runOptions.source || 'final',
+                    model: winningModel || llm.model,
+                    observedToFirstTokenMs: Math.max(0, firstTokenAt - (Number(runOptions.observedAt) || firstTokenAt)),
+                    triggeredToFirstTokenMs: Math.max(0, firstTokenAt - (Number(runOptions.triggeredAt) || firstTokenAt))
+                  }
+                });
+              }
+            }
+            send('llm:token', { text: t });
+          }
       };
       // Coding answers regularly need more than the conversational token budget
       // once they include a complete implementation plus complexity analysis.
       if (mode === 'leetcode') streamOptions.maxTokens = settings.smart ? 6500 : 4500;
-      await Promise.race([
-        abortable(llm.stream(streamOptions), streamController.signal),
-        stalled
-      ]);
+      let answerStream;
+      if (runOptions.autoLiveAnswer && !settings.smart) {
+        const smartLLM = createLLM({ ...settings, smart: true });
+        if (smartLLM.ready && smartLLM.model !== llm.model) {
+          answerStream = streamWithSmartFallback({
+            fast: llm,
+            smart: smartLLM,
+            streamOptions,
+            signal: streamController.signal,
+            fallbackDelayMs: LIVE_ANSWER_FAST_FALLBACK_MS,
+            onWinner: (tier, model) => {
+              winningModel = model;
+              recordEvent({
+                level: 'info',
+                event: 'live_answer_model_winner',
+                frame: 'runFeature',
+                context: { tier, model }
+              });
+            }
+          });
+        }
+      }
+      if (!answerStream) answerStream = llm.stream(streamOptions);
+      await Promise.race([abortable(answerStream, streamController.signal), stalled]);
     } finally {
       streamSettled = true;
       clearTimeout(watchdog);
@@ -751,11 +871,13 @@ async function runFeature(mode, userText) {
       return;
     }
     recordEvent({ level: 'error', event: 'llm_failed', msg: e && e.message ? e.message : String(e), frame: 'runFeature', context: { mode, provider: store.getSettings().provider } });
+    if (runOptions.autoLiveAnswer && !firstTokenAt) lastAutoAnsweredQuestion = '';
     send('llm:error', { message: e && e.message ? e.message : String(e) });
   } finally {
     streamSettled = true;
     streamController.abort();
-    activeResponseController = null;
+    if (activeResponseController === streamController) activeResponseController = null;
+    activeResponseMeta = null;
     state.busy = false;
   }
 }

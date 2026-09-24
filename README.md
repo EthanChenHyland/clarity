@@ -8,12 +8,12 @@ Clarity is an open-source macOS AI overlay for screen assistance, conversation t
 
 ## Release status
 
-**v0.2.13 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
+**v0.2.14 includes separate macOS builds and source archives.** Choose your Mac's chip under Apple menu → About This Mac:
 
 | Mac | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.13-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.13/Clarity-0.2.13-mac-arm64.zip) |
-| Intel | [Clarity-0.2.13-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.13/Clarity-0.2.13-mac-x64.zip) |
+| Apple silicon (M-series) | [Clarity-0.2.14-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.14/Clarity-0.2.14-mac-arm64.zip) |
+| Intel | [Clarity-0.2.14-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.14/Clarity-0.2.14-mac-x64.zip) |
 
 Unzip the matching download and move `Clarity.app` to Applications. Both builds are **ad-hoc signed, not Developer ID-signed or notarized**. macOS may block them on first launch; passing a signature integrity check does not imply Gatekeeper approval. The release includes `SHA256SUMS.txt` for download-integrity checks. Building from source remains available below.
 
@@ -29,7 +29,7 @@ Automated tests and installed-app onboarding checks pass. Live provider response
 | Follow-up / Recap | Suggests questions or summarizes the conversation |
 | Fast / Smart | Switches between your configured answer models |
 | Conversation History | Displays separate microphone (**You**) and system-audio (**Them**) transcripts |
-| Live Interview | Automatically drafts answers to likely questions in finalized Them transcript turns |
+| Live Interview | Starts from stable streaming transcript context, cancels stale drafts, and can fall back from Fast to Smart when Fast stalls |
 | Profile and interview context | Adds résumé, job description, stories, and response preferences; supports PDF/DOCX text import |
 
 Screen-share exclusion is **best-effort**. Some capture tools can include Clarity despite its content-protection setting. Test your actual sharing setup before relying on it. Use recording and assistance with the agreement of the people involved.
@@ -52,7 +52,7 @@ To produce both macOS apps and ZIPs:
 npm run dist:mac -- --arm64 --x64
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.13-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.13-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.14-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.14-mac-x64.zip`. Copy your locally built app to `/Applications` and launch it from Finder for permission testing. Launching the executable directly from a terminal can change which process macOS associates with privacy access.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 

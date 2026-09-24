@@ -430,17 +430,19 @@ async function transcribeBatchGemini(apiKey, wav) {
 // Priority: Deepgram (lowest latency) > OpenAI Realtime > Batch fallback
 // ============================================================================
 
-function createStreamingSTT(settings, channel, callbacks) {
+function createStreamingSTT(settings, channel, callbacks, options = {}) {
   const keys = settings.apiKeys || {};
   const selectedProvider = settings.sttProvider || 'auto';
   const { onTranscript, onInterim, onError, onStatusChange } = callbacks;
+  const skipped = new Set((options.skipProviders || []).map((provider) => String(provider || '').toLowerCase()));
 
   if (selectedProvider === 'local' || selectedProvider === 'gemini') {
     return { type: 'batch', provider: selectedProvider, instance: null };
   }
 
   // Priority 1: Deepgram (purpose-built for streaming STT, lowest latency)
-  if ((selectedProvider === 'auto' || selectedProvider === 'deepgram') && keys.deepgram) {
+  if ((selectedProvider === 'auto' || selectedProvider === 'deepgram') && keys.deepgram &&
+      (selectedProvider !== 'auto' || !skipped.has('deepgram'))) {
     const stt = new DeepgramStreamingSTT(keys.deepgram, {
       model: 'nova-3',
       onTranscript: (text) => onTranscript(channel, text),
@@ -452,7 +454,8 @@ function createStreamingSTT(settings, channel, callbacks) {
   }
 
   // Priority 2: OpenAI Realtime API (excellent quality, slightly higher latency)
-  if ((selectedProvider === 'auto' || selectedProvider === 'openai') && keys.openai) {
+  if ((selectedProvider === 'auto' || selectedProvider === 'openai') && keys.openai &&
+      (selectedProvider !== 'auto' || (!skipped.has('openai') && !skipped.has('openai-realtime')))) {
     const stt = new OpenAIRealtimeSTT(keys.openai, {
       model: 'gpt-realtime-whisper', // only this model gives true streaming deltas
       onTranscript: (text) => onTranscript(channel, text),

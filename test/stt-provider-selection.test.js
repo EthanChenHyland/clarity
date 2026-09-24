@@ -35,3 +35,20 @@ test('explicit cloud selection does not cross-fallback to another provider', () 
   assert.deepEqual(openai.providers, ['openai']);
   assert.deepEqual(gemini.providers, ['gemini']);
 });
+
+test('auto streaming can skip failed Deepgram and move to OpenAI realtime', () => {
+  const selected = createStreamingSTT({
+    sttProvider: 'auto',
+    apiKeys: { deepgram: 'deepgram-key', openai: 'openai-key' }
+  }, 'them', callbacks, { skipProviders: ['deepgram'] });
+  assert.equal(selected.type, 'streaming');
+  assert.equal(selected.provider, 'openai-realtime');
+});
+
+test('explicit Deepgram selection is not changed by auto failover state', () => {
+  const selected = createStreamingSTT({
+    sttProvider: 'deepgram',
+    apiKeys: { deepgram: 'deepgram-key', openai: 'openai-key' }
+  }, 'them', callbacks, { skipProviders: ['deepgram'] });
+  assert.equal(selected.provider, 'deepgram');
+});
