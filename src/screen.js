@@ -3,16 +3,16 @@
 // function is called, so capture itself never becomes an accidental permission
 // prompt path.
 const { desktopCapturer, screen } = require('electron');
+const { screenshotThumbnailSize } = require('./screen-sizing');
 
 async function captureScreenshot(preferredDisplayId = null) {
   const displays = screen.getAllDisplays();
   const preferred = displays.find((display) => String(display.id) === String(preferredDisplayId));
   const target = preferred || screen.getPrimaryDisplay();
-  const { width, height } = target.size;
-  const scale = target.scaleFactor || 1;
+  const thumbnailSize = screenshotThumbnailSize(target);
   const sources = await desktopCapturer.getSources({
     types: ['screen'],
-    thumbnailSize: { width: Math.floor(width * scale), height: Math.floor(height * scale) }
+    thumbnailSize
   });
   if (!sources.length) return null;
   const src = sources.find((s) => String(s.display_id) === String(target.id)) || sources[0];

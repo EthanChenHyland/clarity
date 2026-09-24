@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { downmixToMono, AudioConditioner } = require('../renderer/audio-worklet-processor');
+const { downmixToMono, AudioMixer, AudioConditioner } = require('../renderer/audio-worklet-processor');
 const { UtteranceSegmenter } = require('../src/utterance-segmenter');
 const speech = Float32Array.from({length:4096}, (_,i)=>0.014*Math.sin(2*Math.PI*500*i/16000));
 const silent = new Float32Array(speech.length);
@@ -37,4 +37,15 @@ test('conditioner limits peaks and leaves default microphone gain unchanged',()=
   const out=new AudioConditioner(4).process(loud);
   assert.ok(out.every(x=>Math.abs(x)<=0.900001));
   assert.equal(out[0],0);
+});
+test('real-time mixer reuses scratch storage without changing downmix behavior',()=>{
+  const mixer=new AudioMixer();
+  const phaseOpposed=Float32Array.from(speech,x=>-x);
+  const mixed=mixer.process([speech,speech]);
+  assert.deepEqual(mixed,speech);
+  const scratch=mixer._mono;
+  mixer.process([speech,speech]);
+  assert.equal(mixer._mono,scratch);
+  assert.equal(mixer.process([speech,silent]),speech);
+  assert.equal(mixer.process([speech,phaseOpposed]),speech);
 });

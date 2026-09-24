@@ -32,6 +32,7 @@ const { createTranscriptArchive } = require('./src/transcript-archive');
 const { ResourceContextIndex, appendResourceContext } = require('./src/resource-context');
 const { buildDiagnosticSnapshot, formatDiagnosticReport } = require('./src/diagnostics');
 const { planRendererRecovery } = require('./src/renderer-recovery');
+const { createStreamTokenBatcher } = require('./src/stream-token-batcher');
 
 // Electron 44 defaults to CoreAudio Tap, which uses a separate audio-only
 // permission. Keep capture on ScreenCaptureKit so the permission users grant
@@ -772,6 +773,7 @@ async function runFeature(mode, userText, runOptions = {}) {
   let streamSettled = false; // drop stray tokens from a stream we've already abandoned
   let firstTokenAt = 0;
   let winningModel = null;
+  const tokenBatcher = createStreamTokenBatcher((text) => send('llm:token', { text }));
   try {
     const settings = store.getSettings();
     const llm = createLLM(settings);
@@ -870,7 +872,7 @@ async function runFeature(mode, userText, runOptions = {}) {
                 });
               }
             }
-            send('llm:token', { text: t });
+            tokenBatcher.push(t);
           }
       };
       // Coding answers regularly need more than the conversational token budget
@@ -901,6 +903,8 @@ async function runFeature(mode, userText, runOptions = {}) {
       if (!answerStream) answerStream = llm.stream(streamOptions);
       await Promise.race([abortable(answerStream, streamController.signal), stalled]);
     } finally {
+      if (streamController.signal.aborted) tokenBatcher.cancel();
+      else tokenBatcher.flush();
       streamSettled = true;
       clearTimeout(watchdog);
       clearTimeout(deadline);
@@ -915,6 +919,7 @@ async function runFeature(mode, userText, runOptions = {}) {
     if (runOptions.autoLiveAnswer && !firstTokenAt) lastAutoAnsweredQuestion = '';
     send('llm:error', { message: e && e.message ? e.message : String(e) });
   } finally {
+    tokenBatcher.cancel();
     streamSettled = true;
     streamController.abort();
     if (activeResponseController === streamController) activeResponseController = null;

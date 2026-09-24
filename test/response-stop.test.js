@@ -3,11 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const { abortable } = require('../src/abortable');
+const { createStreamTokenBatcher } = require('../src/stream-token-batcher');
 function harness(needsScreen = false) {
   const events = [], streams = [];
   let resolveScreen;
   const context = vm.createContext({
-    AbortController, abortable, setTimeout, clearTimeout,
+    AbortController, abortable, createStreamTokenBatcher, setTimeout, clearTimeout,
     state: { busy: false }, liveAnswerTimer: null, STREAM_INACTIVITY_MS: 25000,
     MODES: { ask: { needsScreen, userBubble: null, build: () => 'question' } },
     store: { getSettings: () => ({ provider: 'test' }) },

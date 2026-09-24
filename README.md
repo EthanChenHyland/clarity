@@ -8,13 +8,13 @@ Clarity is an open-source desktop AI overlay for macOS and Windows with screen a
 
 ## Release status
 
-**v0.2.16 includes separate macOS builds, a Windows x64 installer, crash recovery, privacy-safe diagnostics, and source archives.**
+**v0.2.17 includes separate macOS builds, a Windows x64 installer, crash recovery, privacy-safe diagnostics, and a focused performance pass.**
 
 | Platform | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.16-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-mac-arm64.zip) |
-| Intel Mac | [Clarity-0.2.16-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-mac-x64.zip) |
-| Windows 10/11 x64 | [Clarity-0.2.16-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.16/Clarity-0.2.16-win-x64.exe) |
+| Apple silicon (M-series) | [Clarity-0.2.17-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-mac-arm64.zip) |
+| Intel Mac | [Clarity-0.2.17-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-mac-x64.zip) |
+| Windows 10/11 x64 | [Clarity-0.2.17-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-win-x64.exe) |
 
 On macOS, unzip the matching build and move `Clarity.app` to Applications. The Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may warn on first launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. The release includes `SHA256SUMS.txt` for download-integrity checks.
 
@@ -57,7 +57,13 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.16-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.16-mac-x64.zip`; Windows output is `dist/Clarity-0.2.16-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.17-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.17-mac-x64.zip`; Windows output is `dist/Clarity-0.2.17-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+
+### Performance notes
+
+- The real-time AudioWorklet reuses mixer/conditioning scratch buffers instead of allocating several arrays for every audio quantum.
+- LLM streaming preserves immediate first-token display, then batches follow-on tokens into short renderer IPC bursts to reduce cross-process overhead.
+- Oversized Retina screenshots are capped at a 2048 px longest edge before vision-model upload, reducing encode/upload work while preserving aspect ratio.
 
 The speech runtime is bundled during packaging; speech **models** are downloaded separately in Settings. No API keys or downloaded speech models are included in the release.
 
