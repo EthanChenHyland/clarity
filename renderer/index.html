@@ -267,7 +267,7 @@
             <span class="s-label">Connected knowledge</span>
             <span id="resource-badge" class="whisper-badge">Not indexed</span>
           </div>
-          <div class="s-note">Add up to 8 GitHub repositories, one URL per line. Clarity caches text/code locally and sends only question-relevant excerpts to your answer model.</div>
+          <div class="s-note">Add up to 8 GitHub repositories, one URL per line. Clarity caches text/code locally and uses hybrid keyword + semantic retrieval to send only question-relevant excerpts to your answer model.</div>
           <textarea id="resource-repositories" rows="4" spellcheck="false" placeholder="https://github.com/owner/project&#10;https://github.com/owner/another-project"></textarea>
           <div class="s-field"><span>GitHub token</span><input id="github-token" type="password" placeholder="optional · private repos" autocomplete="off" /></div>
           <div class="s-note">Optional for public repos. For private repos, use a fine-grained token with read-only Contents access. The token stays in Clarity settings and is never added to AI prompts.</div>

@@ -89,7 +89,7 @@ Enter your own OpenRouter API key. These are configured defaults, not a guarante
 
 Settings → Profile can connect up to eight GitHub repositories as read-only knowledge sources. Public repositories need no token. Private repositories can use an optional fine-grained GitHub token with read-only **Contents** access.
 
-Clarity indexes supported text/code files into a local cache and retrieves only the excerpts relevant to the current interview question. Repository content is treated as untrusted reference data rather than instructions, so text inside a README, source comment, or prompt file cannot replace Clarity's system rules. The GitHub token is used only for repository access and is never inserted into model prompts.
+Clarity indexes supported text/code files into a local cache and retrieves only the excerpts relevant to the current interview question. Retrieval is hybrid: BM25-style lexical ranking preserves exact code/file matches, while local semantic concept vectors rerank conceptually related implementation details even when the interviewer uses different wording. This semantic step is offline and adds no embedding API call or extra provider cost. Repository content is treated as untrusted reference data rather than instructions, so text inside a README, source comment, or prompt file cannot replace Clarity's system rules. The GitHub token is used only for repository access and is never inserted into model prompts.
 
 Two settings are **on by default**:
 

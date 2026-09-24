@@ -64,6 +64,94 @@ test('indexes public repository text and retrieves question-relevant excerpts', 
   }
 });
 
+test('hybrid retrieval bridges interview wording to semantically related implementation details', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clarity-semantic-resources-'));
+  const cachePath = path.join(directory, 'resource-index.json');
+  try {
+    const index = new ResourceContextIndex({
+      cachePath,
+      fetchImpl: async () => { throw new Error('search must stay local'); }
+    });
+    index.data = {
+      version: 2,
+      sources: [{ url: 'https://github.com/acme/widget', repository: 'acme/widget', files: 3 }],
+      chunks: [
+        {
+          sourceUrl: 'https://github.com/acme/widget',
+          repository: 'acme/widget',
+          path: 'src/provider-client.js',
+          text: 'Requests use exponential backoff, a circuit breaker, strict timeouts, and a fallback provider.'
+        },
+        {
+          sourceUrl: 'https://github.com/acme/widget',
+          repository: 'acme/widget',
+          path: 'src/theme-panel.js',
+          text: 'The settings panel renders theme controls, keyboard focus states, and responsive animations.'
+        },
+        {
+          sourceUrl: 'https://github.com/acme/widget',
+          repository: 'acme/widget',
+          path: 'src/database.js',
+          text: 'PostgreSQL migrations update the account schema inside a transaction.'
+        }
+      ],
+      updatedAt: new Date().toISOString()
+    };
+
+    const matches = index.search('How did you keep the app resilient when an external service failed?');
+    assert.ok(matches.length > 0);
+    assert.equal(matches[0].path, 'src/provider-client.js');
+    assert.ok(matches[0].retrieval.semantic > 0);
+    assert.ok(matches[0].retrieval.concepts.includes('reliability'));
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('hybrid retrieval still prioritizes a specific lexical match', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clarity-lexical-resources-'));
+  const cachePath = path.join(directory, 'resource-index.json');
+  try {
+    const index = new ResourceContextIndex({ cachePath, fetchImpl: async () => { throw new Error('offline'); } });
+    index.data = {
+      version: 2,
+      sources: [],
+      chunks: [
+        { sourceUrl: 'a', repository: 'acme/widget', path: 'src/cache.js', text: 'The LRU cache uses TTL eviction for repository excerpts.' },
+        { sourceUrl: 'a', repository: 'acme/widget', path: 'src/performance.js', text: 'Latency benchmarks keep hot paths fast and efficient.' }
+      ],
+      updatedAt: null
+    };
+    const matches = index.search('How does the LRU cache evict repository excerpts?');
+    assert.equal(matches[0].path, 'src/cache.js');
+    assert.ok(matches[0].retrieval.lexical > 0);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('semantic retrieval handles short technical concepts that lexical tokenization omits', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clarity-short-semantic-'));
+  const cachePath = path.join(directory, 'resource-index.json');
+  try {
+    const index = new ResourceContextIndex({ cachePath, fetchImpl: async () => { throw new Error('offline'); } });
+    index.data = {
+      version: 2,
+      sources: [],
+      chunks: [
+        { sourceUrl: 'a', repository: 'acme/widget', path: 'src/model.js', text: 'Machine learning inference runs a classifier over embeddings.' },
+        { sourceUrl: 'a', repository: 'acme/widget', path: 'src/theme.js', text: 'The frontend switches between light and dark themes.' }
+      ],
+      updatedAt: null
+    };
+    const matches = index.search('AI');
+    assert.equal(matches[0].path, 'src/model.js');
+    assert.ok(matches[0].retrieval.concepts.includes('ai'));
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('failed refresh preserves an existing cached repository', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clarity-resource-failure-'));
   const cachePath = path.join(directory, 'resource-index.json');
