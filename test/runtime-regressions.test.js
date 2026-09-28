@@ -356,3 +356,39 @@ test('click-through wakes over native toolbar without renderer mouse events and 
   assert.deepEqual(changes, [true, false]);
   assert.deepEqual(sent, ['mouse:interactive']);
 });
+
+test('renderer hangs fail open and shutdown has a forced-exit fallback', () => {
+  const source = read('main.js');
+  const start = source.indexOf('let rendererHangRecoveryTimer = null;');
+  const end = source.indexOf('// -------- streaming STT state --------', start);
+  const events = [];
+  const timers = [];
+  const makeWindow = name => ({
+    isDestroyed: () => false,
+    setAlwaysOnTop: value => events.push([name, 'top', value]),
+    setIgnoreMouseEvents: value => events.push([name, 'mouse', value]),
+    setFocusable: value => events.push([name, 'focusable', value]),
+    blur: () => events.push([name, 'blur']),
+    hide: () => events.push([name, 'hide'])
+  });
+  const context = vm.createContext({
+    win: makeWindow('main'), permWin: makeWindow('permissions'),
+    app: { exit: code => events.push(['exit', code]) },
+    settingsPriorityActive: false, MAIN_WINDOW_LEVEL: 1, SETTINGS_WINDOW_LEVEL: 3,
+    isForegroundYieldActive: () => false,
+    setTimeout: callback => { const timer = { callback, unref() {} }; timers.push(timer); return timer; },
+    clearTimeout: () => {}
+  });
+  vm.runInContext(source.slice(start, end), context);
+
+  context.disarmOverlayWindows();
+  assert.ok(events.some(event => event[0] === 'main' && event[1] === 'mouse' && event[2] === true));
+  assert.ok(events.some(event => event[0] === 'main' && event[1] === 'focusable' && event[2] === false));
+  assert.ok(events.some(event => event[0] === 'permissions' && event[1] === 'top' && event[2] === false));
+
+  context.beginShutdownFailsafe();
+  assert.ok(events.some(event => event[0] === 'main' && event[1] === 'hide'));
+  assert.equal(timers.length, 1);
+  timers[0].callback();
+  assert.ok(events.some(event => event[0] === 'exit' && event[1] === 0));
+});

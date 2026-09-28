@@ -1,4 +1,7 @@
+require('./src/runtime-compat').installRuntimeCompatibility();
+
 const { app, BrowserWindow, ipcMain, globalShortcut, screen, session, desktopCapturer, shell, dialog, systemPreferences, clipboard } = require('electron');
+const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const PRODUCT_NAME = 'Clarity';
@@ -27,6 +30,7 @@ const {
   shouldReplaceLiveAnswerQuestion,
   isLikelyTranscriptEcho
 } = require('./src/live-answer');
+const { liveAnswerDelayMs } = require('./src/live-answer-timing');
 const { startAppLink, stopAppLink, recordEvent, appLinkConsentState, revokeAppLinkCaller } = require('./src/applink');
 const { createTranscriptArchive } = require('./src/transcript-archive');
 const { ResourceContextIndex, appendResourceContext } = require('./src/resource-context');
@@ -66,6 +70,7 @@ function getWindowsBuild() {
 }
 const WIN_BUILD = getWindowsBuild();
 const WIN_SUPPORTS_CONTENT_PROTECTION = !isWindows || WIN_BUILD >= 19041;
+const WIN_IS_LEGACY = isWindows && WIN_BUILD > 0 && WIN_BUILD < 10000;
 
 let permWin = null;
 let settingsPriorityActive = false;
@@ -101,8 +106,6 @@ const transcript = []; // { channel, text, ts } — capped at MAX_TRANSCRIPT_TUR
 const MAX_TRANSCRIPT_TURNS = 200; // ~30–40 minutes of conversation at normal pace
 const FLUSH_MS = 900;
 const STREAM_INACTIVITY_MS = 25000; // abort a stalled LLM stream so state.busy can't wedge forever
-const LIVE_ANSWER_INTERIM_STABLE_MS = 650;
-const LIVE_ANSWER_STREAMING_FINAL_MS = 250;
 const LIVE_ANSWER_FAST_FALLBACK_MS = 3000;
 const MIN_BYTES = Math.floor(16000 * 2 * 0.12); // ~0.12s
 const RMS_GATE = 180;
@@ -119,6 +122,54 @@ let lastAutoAnsweredQuestion = '';
 let transcriptArchive = null;
 let rendererRecoveryHistory = [];
 let pendingRendererRecoveryNotice = '';
+let rendererHangRecoveryTimer = null;
+let shutdownFailsafeTimer = null;
+let shutdownStarted = false;
+const RENDERER_HANG_RECOVERY_MS = 1500;
+const SHUTDOWN_FAILSAFE_MS = 2000;
+
+function makeWindowNonBlocking(target, { hide = false } = {}) {
+  if (!target || target.isDestroyed()) return;
+  try { target.setAlwaysOnTop(false); } catch {}
+  try { target.setIgnoreMouseEvents(true, { forward: true }); } catch {}
+  try { target.setFocusable(false); } catch {}
+  try { target.blur(); } catch {}
+  if (hide) {
+    try { target.hide(); } catch {}
+  }
+}
+
+function disarmOverlayWindows({ hide = false } = {}) {
+  makeWindowNonBlocking(win, { hide });
+  makeWindowNonBlocking(permWin, { hide });
+}
+
+function restoreMainWindowAfterRecovery() {
+  if (shutdownStarted || !win || win.isDestroyed()) return;
+  try { win.setFocusable(true); } catch {}
+  try { win.setIgnoreMouseEvents(false); } catch {}
+  if (!isForegroundYieldActive()) {
+    try {
+      win.setAlwaysOnTop(
+        true,
+        'screen-saver',
+        settingsPriorityActive ? SETTINGS_WINDOW_LEVEL : MAIN_WINDOW_LEVEL
+      );
+    } catch {}
+  }
+}
+
+function beginShutdownFailsafe() {
+  shutdownStarted = true;
+  if (rendererHangRecoveryTimer) {
+    clearTimeout(rendererHangRecoveryTimer);
+    rendererHangRecoveryTimer = null;
+  }
+  disarmOverlayWindows({ hide: true });
+  if (shutdownFailsafeTimer) return;
+  shutdownFailsafeTimer = setTimeout(() => app.exit(0), SHUTDOWN_FAILSAFE_MS);
+  shutdownFailsafeTimer.unref?.();
+}
 
 // -------- streaming STT state --------
 let streamingSTT = { you: null, them: null }; // streaming STT instances per channel
@@ -210,10 +261,12 @@ function scheduleLiveAnswerQuestion(question, { source = 'final', observedAt = D
   }
 
   if (questionsEquivalent(question, lastAutoAnsweredQuestion)) return;
-  const configuredDelay = Math.max(250, Math.min(900, Number(settings.liveAnswerDelayMs) || 700));
-  const delay = source === 'interim'
-    ? LIVE_ANSWER_INTERIM_STABLE_MS
-    : (streamingMode ? LIVE_ANSWER_STREAMING_FINAL_MS : configuredDelay);
+  const delay = liveAnswerDelayMs({
+    question,
+    source,
+    streamingMode,
+    configuredDelayMs: settings.liveAnswerDelayMs
+  });
 
   liveAnswerTimer = setTimeout(() => {
     liveAnswerTimer = null;
@@ -455,6 +508,8 @@ function createWindow() {
   });
 
   win.webContents.on('did-finish-load', () => {
+    if (shutdownStarted) return;
+    restoreMainWindowAfterRecovery();
     win.showInactive();
     win.setTitle(PRODUCT_NAME);
     if (pendingRendererRecoveryNotice) {
@@ -468,14 +523,43 @@ function createWindow() {
       });
     }
   });
+  win.on('unresponsive', () => {
+    if (shutdownStarted) return;
+    recordEvent({ level: 'fatal', event: 'renderer_unresponsive', msg: 'renderer became unresponsive; releasing overlay input', frame: 'BrowserWindow' });
+    disarmOverlayWindows();
+    if (rendererHangRecoveryTimer) return;
+    rendererHangRecoveryTimer = setTimeout(() => {
+      rendererHangRecoveryTimer = null;
+      if (shutdownStarted || !win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) return;
+      try {
+        win.webContents.forcefullyCrashRenderer();
+      } catch (error) {
+        recordEvent({ level: 'fatal', event: 'renderer_force_recovery_failed', msg: error.message || String(error), frame: 'BrowserWindow' });
+        app.quit();
+      }
+    }, RENDERER_HANG_RECOVERY_MS);
+    rendererHangRecoveryTimer.unref?.();
+  });
+  win.on('responsive', () => {
+    if (!rendererHangRecoveryTimer || shutdownStarted) return;
+    clearTimeout(rendererHangRecoveryTimer);
+    rendererHangRecoveryTimer = null;
+    restoreMainWindowAfterRecovery();
+  });
   win.webContents.on('render-process-gone', (_e, d) => {
     console.log('[Clarity] renderer gone', JSON.stringify(d));
     recordEvent({ level: 'fatal', event: 'renderer_gone', code: d && d.reason, msg: 'renderer process ended: ' + JSON.stringify(d), frame: 'BrowserWindow' });
+    if (rendererHangRecoveryTimer) {
+      clearTimeout(rendererHangRecoveryTimer);
+      rendererHangRecoveryTimer = null;
+    }
+    disarmOverlayWindows();
     const plan = planRendererRecovery(rendererRecoveryHistory, Date.now(), d && d.reason);
     rendererRecoveryHistory = plan.history;
     if (plan.action !== 'reload') {
       if (plan.action === 'stop') {
         recordEvent({ level: 'fatal', event: 'renderer_recovery_stopped', msg: 'automatic renderer recovery stopped after repeated crashes', frame: 'BrowserWindow' });
+        app.quit();
       }
       return;
     }
@@ -1044,7 +1128,10 @@ ipcMain.handle('whisper:model-import', async (_event, modelId) => {
 ipcMain.handle('platform:info', () => ({
   platform: process.platform,
   winBuild: WIN_BUILD,
-  winSupportsContentProtection: WIN_SUPPORTS_CONTENT_PROTECTION
+  winSupportsContentProtection: WIN_SUPPORTS_CONTENT_PROTECTION,
+  winLegacy: WIN_IS_LEGACY,
+  electron: process.versions.electron,
+  node: process.versions.node,
 }));
 ipcMain.handle('transcript:clear', () => {
   transcript.splice(0, transcript.length);
@@ -1332,6 +1419,19 @@ ipcMain.on('open-pane', async (_e, url) => {
     recordEvent({ level: 'warn', event: 'open_settings_failed', msg: error.message || String(error), frame: 'open-pane' });
   }
 });
+ipcMain.on('windows:recording-devices', (event) => {
+  if (!isWindows || !isMainRendererSender(event.sender)) return;
+  try {
+    const controlPanel = spawn('control.exe', ['mmsys.cpl,,1'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    controlPanel.unref();
+  } catch (error) {
+    recordEvent({ level: 'warn', event: 'open_recording_devices_failed', msg: error.message || String(error), frame: 'windows:recording-devices' });
+  }
+});
 
 app.on('browser-window-focus', (_event, focusedWindow) => {
   if (nativeUiRestorePending && nativeUiDepth === 0 && focusedWindow === win) {
@@ -1484,7 +1584,7 @@ function getScreenPermissionStatus() {
 async function getPermissionStatus() {
   if (isWindows) {
     return {
-      mic: systemPreferences.getMediaAccessStatus('microphone'),
+      mic: WIN_IS_LEGACY ? 'granted' : systemPreferences.getMediaAccessStatus('microphone'),
       // Electron documents screen access as always granted on Windows. Windows
       // privacy/security software can still block capture at runtime, which is
       // reported separately by the capture error path.
@@ -1598,6 +1698,16 @@ function createPermissionsWindow() {
       permWin.moveTop();
       permWin.focus();
     }
+  });
+  permWin.on('unresponsive', () => {
+    const target = permWin;
+    if (!target || target.isDestroyed()) return;
+    recordEvent({ level: 'fatal', event: 'permissions_renderer_unresponsive', msg: 'permissions renderer became unresponsive; closing its overlay', frame: 'PermissionsWindow' });
+    makeWindowNonBlocking(target);
+    const timer = setTimeout(() => {
+      if (!target.isDestroyed()) target.destroy();
+    }, RENDERER_HANG_RECOVERY_MS);
+    timer.unref?.();
   });
   permWin.on('closed', () => {
     permWin = null;
@@ -1738,6 +1848,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  beginShutdownFailsafe();
   // macOS Privacy settings can perform its own Quit & Reopen after a grant.
   // Let that replacement instance take the lock as soon as this process starts
   // shutting down instead of making it lose the race and exit immediately.

@@ -18,11 +18,17 @@ test('package.json has no "build" field shadowing electron-builder.cjs', () => {
   assert.equal(Object.prototype.hasOwnProperty.call(pkg, 'build'), false);
 });
 
-test('dist/pack scripts do not pass an inline --config that could bypass electron-builder.cjs', () => {
+test('dist/pack scripts only use the reviewed Win7 config override', () => {
   for (const [name, script] of Object.entries(pkg.scripts)) {
     if (!/electron-builder/.test(script)) continue;
+    if (/^.*:win7$/.test(name)) {
+      assert.match(script, /--config electron-builder\.win7\.cjs/);
+      continue;
+    }
     assert.ok(!/--config/.test(script), `${name} script unexpectedly overrides config: ${script}`);
   }
+  const win7Config = fs.readFileSync(path.join(__dirname, '..', 'electron-builder.win7.cjs'), 'utf8');
+  assert.match(win7Config, /require\('\.\/electron-builder\.cjs'\)/);
 });
 
 test('mac config never auto-publishes and only claims hardened runtime / notarization with a real cert', () => {

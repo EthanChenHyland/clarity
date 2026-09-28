@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('clarity', {
   transcriptGet: () => ipcRenderer.invoke('transcript:get'),
   openTranscriptFolder: () => ipcRenderer.invoke('transcript:open-folder'),
   openPane: (url) => ipcRenderer.send('open-pane', url),
+  openWindowsRecordingDevices: () => ipcRenderer.send('windows:recording-devices'),
   appLinkState: () => ipcRenderer.invoke('applink:state'),
   appLinkRevoke: (callerId) => ipcRenderer.invoke('applink:revoke', callerId),
   appLinkConsentRespond: (id, allowed) => ipcRenderer.send('applink:consent-response', { id, allowed }),

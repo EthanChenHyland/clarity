@@ -89,8 +89,23 @@ test('buildInterviewContext: behavioral injects STAR stories', () => {
   const ctx = buildInterviewContext(fullSettings, 'say',
     [{ channel: 'them', text: 'Tell me about a time you faced a major outage.' }]);
   assert.ok(ctx !== null);
-  assert.ok(ctx.includes('STAR'), 'should include STAR stories');
+  assert.ok(ctx.includes('Grounded Story Bank'), 'should include grounded story retrieval');
+  assert.ok(ctx.includes('STAR'), 'should identify verified STAR stories');
   assert.ok(ctx.includes('PayCo'), 'should include resume');
+});
+
+test('buildInterviewContext: behavioral never asks the model to invent a story', () => {
+  const settings = {
+    ...fullSettings,
+    starStories: '',
+    resumeText: 'Jane Doe\nEngineer\nProjects\nBuilt a payment reconciliation service in Python and reduced manual review work.'
+  };
+  const ctx = buildInterviewContext(settings, 'say',
+    [{ channel: 'them', text: 'Tell me about a time you faced a challenge.' }]);
+  assert.ok(ctx !== null);
+  assert.doesNotMatch(ctx, /construct a plausible story/i);
+  assert.match(ctx, /Never invent/i);
+  assert.match(ctx, /payment reconciliation service/i);
 });
 
 test('buildInterviewContext: motivation injects why company / why leaving', () => {

@@ -4,6 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const builder = require('../electron-builder.cjs');
+const win7Builder = require('../electron-builder.win7.cjs');
 const pkg = require('../package.json');
 
 test('defines a versioned Windows x64 installer target without implicit publishing', () => {
@@ -13,6 +14,14 @@ test('defines a versioned Windows x64 installer target without implicit publishi
   assert.equal(builder.win.artifactName, '${productName}-${version}-win-${arch}.${ext}');
   assert.equal(builder.win.icon, 'build-resources/icon.ico');
   assert.ok(fs.existsSync(path.join(__dirname, '..', builder.win.icon)));
+});
+
+test('defines an isolated Windows 7 build on the final compatible Electron line', () => {
+  assert.equal(pkg.scripts['pack:win7'], 'electron-builder --win --x64 --dir --config electron-builder.win7.cjs --publish never');
+  assert.equal(pkg.scripts['dist:win7'], 'electron-builder --win --x64 --config electron-builder.win7.cjs --publish never');
+  assert.equal(win7Builder.electronVersion, '22.3.27');
+  assert.equal(win7Builder.directories.output, 'dist-win7');
+  assert.equal(win7Builder.win.artifactName, '${productName}-${version}-win7-${arch}.${ext}');
 });
 
 test('Windows app identity and settings links are explicit', () => {
@@ -33,8 +42,11 @@ test('tagged releases build and upload a Windows installer on a Windows runner',
   const workflow = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/release.yml'), 'utf8');
   assert.match(workflow, /windows-release:[\s\S]*runs-on: windows-latest/);
   assert.match(workflow, /windows-release:[\s\S]*npm run dist:win/);
+  assert.match(workflow, /windows-release:[\s\S]*npm run dist:win7/);
   assert.match(workflow, /windows-release:[\s\S]*dist\/\*\.exe/);
+  assert.match(workflow, /windows-release:[\s\S]*dist-win7\/\*\.exe/);
   assert.match(workflow, /clarity-windows-\$\{\{ github\.ref_name \}\}/);
+  assert.match(workflow, /clarity-windows7-\$\{\{ github\.ref_name \}\}/);
 });
 
 test('tagged releases validate both macOS architectures and preserve packages', () => {

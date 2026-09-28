@@ -94,6 +94,9 @@ jobs:
       - name: Build Windows installer
         run: npm run dist:win
 
+      - name: Build Windows 7 compatibility installer
+        run: npm run dist:win7
+
       - name: Preserve Windows installer as workflow artifact
         uses: actions/upload-artifact@v4
         with:
@@ -101,10 +104,18 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
+      - name: Preserve Windows 7 installer as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clarity-windows7-${{ github.ref_name }}
+          path: dist-win7/*.exe
+          if-no-files-found: error
+
       - name: Upload Windows installer to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.exe
+            dist-win7/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

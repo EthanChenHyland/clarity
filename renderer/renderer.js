@@ -2039,7 +2039,11 @@
     // ms-settings:privacy-screenrecorder only exists on Windows 11.
     // On Windows 10, screen capture needs no permission — so replace the button
     // with a more helpful note instead of an invalid settings link.
-    if (isWindows && platformInfo.winBuild > 0 && platformInfo.winBuild < 22000) {
+    if (isWindows && platformInfo.winLegacy) {
+      const ob = OB_STEPS[1];
+      ob.buttons = [{ label: 'Open Recording devices', action: () => clarity.openWindowsRecordingDevices() }];
+      ob.body = 'Windows 7 does not have the newer app privacy-settings pages. Clarity can use the microphone and screen directly; choose <strong>Open Recording devices</strong> if you need to select or enable your microphone.<br><br><strong>Screen capture works automatically on Windows 7.</strong> If audio capture fails, make sure the microphone is enabled and set as an active recording device.';
+    } else if (isWindows && platformInfo.winBuild > 0 && platformInfo.winBuild < 22000) {
       // Windows 10: update the onboarding screen recording button to be more helpful
       const ob = OB_STEPS[1];
       ob.buttons = ob.buttons.filter((b) => !b.label.toLowerCase().includes('screen'));

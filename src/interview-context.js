@@ -2,6 +2,7 @@
 // Builds context-aware, category-specific system prompt blocks for every
 // direction an interview can take. Reads the live transcript to detect which
 // category is in play and injects only the fields that are relevant.
+const { buildStoryBank, formatStoryBank } = require('./story-bank');
 
 // ── Question category detection ───────────────────────────────────────────────
 const CATEGORY_PATTERNS = {
@@ -158,6 +159,14 @@ function buildJDBlock(jd, limit = 600) {
   return 'Target Role / Job Description:\n' + clip(jd.trim().replace(/\s+/g, ' '), limit);
 }
 
+function recentInterviewerPrompt(transcript) {
+  return (transcript || [])
+    .filter(turn => turn && turn.channel === 'them' && String(turn.text || '').trim())
+    .slice(-3)
+    .map(turn => String(turn.text).trim())
+    .join(' ');
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 /**
@@ -202,18 +211,30 @@ function buildInterviewContext(settings, mode, transcript) {
   switch (category) {
 
     case 'behavioral':
+      {
+        const storyBank = buildStoryBank({
+          question: recentInterviewerPrompt(transcript),
+          resumeText: resume,
+          starStories: stories,
+          limit: 3
+        });
+        if (storyBank.length) {
+          blocks.push(
+            '=== Grounded Story Bank (best matches for this question) ===\n' +
+            formatStoryBank(storyBank) + '\n' +
+            'Use only factual details supported by this evidence. For a behavioral answer, prefer a verified STAR story when one fits. ' +
+            'Never invent an employer, project, metric, date, conflict, action, result, or incident. ' +
+            'If the evidence does not contain a complete STAR example, answer from the known facts and keep missing details general.'
+          );
+        } else {
+          blocks.push(
+            'No grounded behavioral story is available. Keep the answer general and do not invent personal experiences, employers, projects, metrics, dates, actions, or results.'
+          );
+        }
+      }
       if (hasStories) {
         blocks.push(
-          '=== Your STAR Stories (use these for behavioral questions) ===\n' +
-          clip(stories.trim(), 2000) + '\n' +
-          'IMPORTANT: When answering behavioral questions, use these real stories. ' +
-          'Structure your answer: Situation → Task → Action → Result. ' +
-          'Be specific, use numbers/metrics when available, keep it under 2 minutes spoken.'
-        );
-      } else {
-        blocks.push(
-          '(No STAR stories provided — construct a plausible story from the candidate\'s experience above. ' +
-          'Be specific and grounded, avoid generic statements.)'
+          'Answer structure: Situation → Task → Action → Result. Keep it under 2 minutes spoken and use metrics only when they appear in the supplied evidence.'
         );
       }
       if (workStyle) blocks.push('Work Style / Values:\n' + clip(workStyle, 400));

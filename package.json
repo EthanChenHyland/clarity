@@ -1,6 +1,6 @@
 {
   "name": "clarity",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "Open-source real-time AI overlay for macOS and Windows with screen, microphone, and system-audio assistance.",
   "license": "GPL-3.0-or-later",
   "author": "Clarity contributors",
@@ -15,6 +15,8 @@
     "dist:mac": "electron-builder --mac zip",
     "dist:win": "electron-builder --win --publish never",
     "pack:win": "electron-builder --win --dir --publish never",
+    "dist:win7": "electron-builder --win --x64 --config electron-builder.win7.cjs --publish never",
+    "pack:win7": "electron-builder --win --x64 --dir --config electron-builder.win7.cjs --publish never",
     "dist:linux": "electron-builder --linux AppImage --x64",
     "dist:linux:arm64": "electron-builder --linux AppImage --arm64",
     "prepare:renderer": "node scripts/prepare-renderer.js",
@@ -43,11 +45,13 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@google/genai": "^2.12.0",
+    "formdata-node": "^4.4.1",
     "katex": "^0.18.7",
     "lucide-static": "^0.468.0",
     "mammoth": "^1.8.0",
     "markdown-it": "^15.0.2",
     "markdown-it-texmath": "^1.0.0",
+    "node-fetch": "^2.7.0",
     "openai": "^4.73.0",
     "pdf-parse": "^1.1.1",
     "ws": "^8.18.0"

@@ -8,13 +8,14 @@ Clarity is an open-source desktop AI overlay for macOS and Windows with screen a
 
 ## Release status
 
-**v0.2.17 includes separate macOS builds, a Windows x64 installer, crash recovery, privacy-safe diagnostics, and a focused performance pass.**
+**v0.2.18 improves Live Interview responsiveness and grounding, adds stronger freeze/quit recovery, and ships a separate Windows 7 compatibility build alongside the current macOS and Windows installers.**
 
 | Platform | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.17-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-mac-arm64.zip) |
-| Intel Mac | [Clarity-0.2.17-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-mac-x64.zip) |
-| Windows 10/11 x64 | [Clarity-0.2.17-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.17/Clarity-0.2.17-win-x64.exe) |
+| Apple silicon (M-series) | [Clarity-0.2.18-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-arm64.zip) |
+| Intel Mac | [Clarity-0.2.18-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-x64.zip) |
+| Windows 10/11 x64 | [Clarity-0.2.18-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-win-x64.exe) |
+| Windows 7/8/8.1 x64 compatibility build | [Clarity-0.2.18-win7-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-win7-x64.exe) |
 
 On macOS, unzip the matching build and move `Clarity.app` to Applications. The Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may warn on first launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. The release includes `SHA256SUMS.txt` for download-integrity checks.
 
@@ -31,7 +32,9 @@ Automated tests pass on supported Node versions, Windows packaging runs on `wind
 | Fast / Smart | Switches between your configured answer models |
 | Conversation History | Displays separate microphone (**You**) and system-audio (**Them**) transcripts |
 | Live Interview | Starts from stable streaming transcript context, cancels stale drafts, and can fall back from Fast to Smart when Fast stalls |
+| Adaptive Live Answer timing | Responds faster to complete questions while waiting longer on incomplete transcript fragments |
 | Profile and interview context | Adds résumé, job description, stories, and response preferences; supports PDF/DOCX text import |
+| Grounded Story Bank | Ranks real STAR/resume evidence for behavioral questions and avoids inventing unsupported experiences or metrics |
 
 Screen-share exclusion is **best-effort**. Some capture tools can include Clarity despite its content-protection setting. Test your actual sharing setup before relying on it. Use recording and assistance with the agreement of the people involved.
 
@@ -57,7 +60,7 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.17-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.17-mac-x64.zip`; Windows output is `dist/Clarity-0.2.17-win-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.18-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.18-mac-x64.zip`; Windows output is `dist/Clarity-0.2.18-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.18-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 ### Performance notes
 
