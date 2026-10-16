@@ -52,3 +52,16 @@ test('explicit Deepgram selection is not changed by auto failover state', () => 
   }, 'them', callbacks, { skipProviders: ['deepgram'] });
   assert.equal(selected.provider, 'deepgram');
 });
+
+test('Deepgram streaming receives résumé and job-description keyterms', () => {
+  const selected = createStreamingSTT({
+    sttProvider: 'deepgram',
+    resumeText: 'Vanderbilt Supabase',
+    jobDescription: 'Kubernetes infrastructure',
+    apiKeys: { deepgram: 'deepgram-key' }
+  }, 'them', callbacks);
+  assert.ok(selected.instance.keyterms.includes('Vanderbilt'));
+  assert.ok(selected.instance.keyterms.includes('Supabase'));
+  assert.ok(selected.instance.keyterms.includes('Kubernetes'));
+  assert.ok(selected.instance.keyterms.length <= 80);
+});

@@ -4,7 +4,7 @@
 // This module manages a persistent WebSocket connection for real-time transcription
 // with sub-200ms latency, interim results, and automatic reconnection.
 
-const { looksLikeHallucination } = require('./stt');
+const { looksLikeHallucination, buildVocabTerms } = require('./stt');
 const { pcmToWav } = require('./wav');
 const { CURRENT_GEMINI_DEFAULT } = require('./llm');
 
@@ -31,6 +31,8 @@ class OpenAIRealtimeSTT {
     this._manualStop = false;
     this._pendingAudio = [];
     this._sessionReady = false;
+    this._interimByItem = new Map();
+    this._latestInterimItem = null;
   }
 
   async connect() {
@@ -109,13 +111,22 @@ class OpenAIRealtimeSTT {
 
       case 'conversation.item.input_audio_transcription.delta':
         if (event.delta) {
-          this.onInterim(event.delta);
+          const itemId = event.item_id || '__current__';
+          const cumulative = (this._interimByItem.get(itemId) || '') + event.delta;
+          this._interimByItem.set(itemId, cumulative);
+          this._latestInterimItem = itemId;
+          this.onInterim(cumulative.trimStart());
         }
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript && event.transcript.trim()) {
           this.onTranscript(event.transcript.trim());
+        }
+        if (event.item_id) this._interimByItem.delete(event.item_id);
+        if (!event.item_id || this._latestInterimItem === event.item_id) {
+          this._latestInterimItem = null;
+          this.onInterim('');
         }
         break;
 
@@ -217,6 +228,8 @@ class OpenAIRealtimeSTT {
     this.reconnecting = false;
     this._sessionReady = false;
     this._pendingAudio = [];
+    this._interimByItem.clear();
+    this._latestInterimItem = null;
     if (this.ws) {
       this.ws.close(1000);
       this.ws = null;
@@ -247,6 +260,7 @@ class DeepgramStreamingSTT {
     this._manualStop = false;
     this._keepAliveInterval = null;
     this._committed = ''; // is_final segments not yet closed out by speech_final
+    this.keyterms = Array.isArray(options.keyterms) ? options.keyterms.filter(Boolean).slice(0, 100) : [];
   }
 
   async connect() {
@@ -268,6 +282,7 @@ class DeepgramStreamingSTT {
         endpointing: '300',
         punctuate: 'true'
       });
+      for (const term of this.keyterms) params.append('keyterm', term);
 
       const url = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
 
@@ -294,12 +309,7 @@ class DeepgramStreamingSTT {
         } catch (e) { /* ignore */ }
       });
 
-      this.ws.on('close', (code) => {
-        this.connected = false;
-        this._clearKeepAlive();
-        this.onStatusChange('disconnected');
-        if (code !== 1000 && !this._manualStop) this._attemptReconnect();
-      });
+      this.ws.on('close', (code) => this._handleClose(code));
 
       this.ws.on('error', (err) => {
         this.onError({ provider: 'deepgram', message: err.message, status: null });
@@ -347,6 +357,19 @@ class DeepgramStreamingSTT {
     this._committed = '';
     if (full && !looksLikeHallucination(full)) this.onTranscript(full);
     this.onInterim('');
+  }
+
+  _handleClose(code) {
+    this.connected = false;
+    this._clearKeepAlive();
+    this.onStatusChange('disconnected');
+    if (code !== 1000 && !this._manualStop) {
+      // Do not carry a finalized fragment across sockets. If the connection
+      // drops after Deepgram marked words final but before speech_final, emit
+      // those words as their own turn before reconnecting.
+      this._flushCommitted();
+      this._attemptReconnect();
+    }
   }
 
   sendAudio(pcmBuffer) {
@@ -445,6 +468,7 @@ function createStreamingSTT(settings, channel, callbacks, options = {}) {
       (selectedProvider !== 'auto' || !skipped.has('deepgram'))) {
     const stt = new DeepgramStreamingSTT(keys.deepgram, {
       model: 'nova-3',
+      keyterms: buildVocabTerms(settings, 80),
       onTranscript: (text) => onTranscript(channel, text),
       onInterim: (text) => onInterim(channel, text),
       onError,

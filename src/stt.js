@@ -21,11 +21,16 @@ function looksLikeHallucination(raw) {
   return artifacts.has(t);
 }
 
-function buildVocabPrompt(settings) {
+function buildVocabTerms(settings, limit = 80) {
   const s = settings || {};
   const text = (s.resumeText || '') + ' ' + (s.jobDescription || '');
   const proper = Array.from(new Set(text.match(/\b([A-Z][a-zA-Z0-9+.#]{2,}|[A-Z]{2,6})\b/g) || []));
-  let prompt = BASE_VOCAB + (proper.length ? ', ' + proper.slice(0, 60).join(', ') : '');
+  const base = BASE_VOCAB.split(',').map((term) => term.trim()).filter(Boolean);
+  return Array.from(new Set([...proper, ...base])).slice(0, Math.max(1, limit));
+}
+
+function buildVocabPrompt(settings) {
+  let prompt = buildVocabTerms(settings, 100).join(', ');
   if (prompt.length > 850) prompt = prompt.slice(0, 850);
   return prompt;
 }
@@ -112,4 +117,4 @@ function createSTT(settings) {
   };
 }
 
-module.exports = { createSTT, looksLikeHallucination, buildVocabPrompt };
+module.exports = { createSTT, looksLikeHallucination, buildVocabPrompt, buildVocabTerms };

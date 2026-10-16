@@ -60,7 +60,7 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-Apple silicon output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.18-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.18-mac-x64.zip`; Windows output is `dist/Clarity-0.2.18-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.18-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+The development source is currently at **v0.2.19**; the downloads linked above remain the last published **v0.2.18** release until a new release is published. Apple silicon build output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.19-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.19-mac-x64.zip`; Windows output is `dist/Clarity-0.2.19-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.19-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 ### Performance notes
 
