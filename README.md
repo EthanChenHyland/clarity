@@ -8,16 +8,18 @@ Clarity is an open-source desktop AI overlay for macOS and Windows with screen a
 
 ## Release status
 
-**v0.2.18 improves Live Interview responsiveness and grounding, adds stronger freeze/quit recovery, and ships a separate Windows 7 compatibility build alongside the current macOS and Windows installers.**
+**v0.2.19 improves streaming transcription and Live Answer timing.** Deepgram Nova-3 now uses vocabulary hints from the résumé and job description, finalized fragments survive unexpected reconnects, OpenAI Realtime interim deltas are assembled into complete text, and incomplete behavioral questions wait for the interviewer to finish.
+
+The v0.2.19 release workflow builds both macOS architectures but only publishes macOS archives when Apple signing and notarization are configured. Until then, use the v0.2.18 macOS downloads below or build v0.2.19 locally. Windows installers are published by the tagged-release workflow.
 
 | Platform | Download |
 |---|---|
 | Apple silicon (M-series) | [Clarity-0.2.18-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-arm64.zip) |
 | Intel Mac | [Clarity-0.2.18-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-x64.zip) |
-| Windows 10/11 x64 | [Clarity-0.2.18-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-win-x64.exe) |
-| Windows 7/8/8.1 x64 compatibility build | [Clarity-0.2.18-win7-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-win7-x64.exe) |
+| Windows 10/11 x64 | [Clarity-0.2.19-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-win-x64.exe) |
+| Windows 7/8/8.1 x64 compatibility build | [Clarity-0.2.19-win7-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-win7-x64.exe) |
 
-On macOS, unzip the matching build and move `Clarity.app` to Applications. The Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may warn on first launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. The release includes `SHA256SUMS.txt` for download-integrity checks.
+On macOS, unzip the matching build and move `Clarity.app` to Applications. The older published Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may block launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. GitHub provides an SHA-256 digest for each uploaded release asset.
 
 Automated tests pass on supported Node versions, Windows packaging runs on `windows-latest`, and the Windows whisper.cpp runtime is downloaded, checksum-verified, launched, and smoke-tested in CI. Live provider responses plus end-to-end capture with real conferencing software still require field testing on each target OS. See the [verification notes](docs/permission-verification.md) for the current macOS permission scope and remaining limitations.
 
@@ -60,7 +62,7 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-The development source is currently at **v0.2.19**; the downloads linked above remain the last published **v0.2.18** release until a new release is published. Apple silicon build output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.19-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.19-mac-x64.zip`; Windows output is `dist/Clarity-0.2.19-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.19-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+The source and current Windows release target are **v0.2.19**. Apple silicon build output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.19-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.19-mac-x64.zip`; Windows output is `dist/Clarity-0.2.19-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.19-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 ### Performance notes
 
