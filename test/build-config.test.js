@@ -91,13 +91,16 @@ test('mac config ships the zip target with entitlements files that exist on disk
   assert.match(entitlementsXml, /com\.apple\.security\.device\.audio-input/);
 });
 
-test('release workflow only uploads macOS when signing and notarization are fully configured', () => {
+test('release workflow publishes macOS packages without credentials but cannot overwrite signed builds with ad-hoc packages', () => {
   const workflow = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/release.yml'), 'utf8');
-  const gate = workflow.match(/MAC_SIGNING_CONFIGURED:[^\n]+/)?.[0] || '';
+  const upload = workflow.split('- name: Upload macOS archives to GitHub Release')[1]?.split('  windows-release:')[0] || '';
+  assert.match(upload, /uses: softprops\/action-gh-release@v2/);
+  assert.match(upload, /dist\/\*\.zip/);
+  assert.doesNotMatch(upload, /\n\s*if:/);
+  const overwrite = upload.match(/overwrite_files:[^\n]+/)?.[0] || '';
   for (const secret of ['CSC_LINK', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID']) {
-    assert.match(gate, new RegExp(`secrets\\.${secret}`));
+    assert.match(overwrite, new RegExp(`secrets\\.${secret}`));
   }
-  assert.match(workflow, /env\.MAC_SIGNING_CONFIGURED == 'true'/);
 });
 
 test('build identity is Clarity and no Edge impersonation postinstall remains', () => {

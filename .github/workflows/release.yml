@@ -16,13 +16,6 @@ jobs:
       matrix:
         os: [macos-latest]
 
-    env:
-      # A runner with no certificate can only produce an ad-hoc macOS build, and
-      # macOS refuses those after a download. Publishing one would overwrite a
-      # signed release asset with an unopenable one, so the mac upload below is
-      # gated on this. Set CSC_LINK and the APPLE_* secrets to turn it on.
-      MAC_SIGNING_CONFIGURED: ${{ secrets.CSC_LINK != '' && secrets.APPLE_ID != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
-
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -60,14 +53,16 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-      - name: Upload to GitHub Release
-        # Skipped on macOS until signing is configured, so an ad-hoc build can
-        # never replace a signed asset already attached to the release.
-        if: env.MAC_SIGNING_CONFIGURED == 'true'
+      - name: Upload macOS archives to GitHub Release
+        # Publish both architectures even without Apple credentials. Those
+        # builds are ad-hoc signed and unnotarized; disclose this in the README
+        # and release notes so users understand Gatekeeper warnings. An unsigned
+        # rerun must never overwrite an existing (possibly signed) download.
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.zip
+          overwrite_files: ${{ secrets.CSC_LINK != '' && secrets.APPLE_ID != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

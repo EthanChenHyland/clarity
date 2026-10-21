@@ -10,16 +10,16 @@ Clarity is an open-source desktop AI overlay for macOS and Windows with screen a
 
 **v0.2.19 improves streaming transcription and Live Answer timing.** Deepgram Nova-3 now uses vocabulary hints from the résumé and job description, finalized fragments survive unexpected reconnects, OpenAI Realtime interim deltas are assembled into complete text, and incomplete behavioral questions wait for the interviewer to finish.
 
-The v0.2.19 release workflow builds both macOS architectures but only publishes macOS archives when Apple signing and notarization are configured. Until then, use the v0.2.18 macOS downloads below or build v0.2.19 locally. Windows installers are published by the tagged-release workflow.
+The v0.2.19 release provides downloads for both macOS architectures and Windows. Mac builds are **ad-hoc signed and not Apple Developer ID-signed or notarized**; future tagged releases also publish the macOS builds when Apple signing credentials are unavailable.
 
 | Platform | Download |
 |---|---|
-| Apple silicon (M-series) | [Clarity-0.2.18-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-arm64.zip) |
-| Intel Mac | [Clarity-0.2.18-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.18/Clarity-0.2.18-mac-x64.zip) |
+| Apple silicon (M-series) | [Clarity-0.2.19-mac-arm64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-mac-arm64.zip) |
+| Intel Mac | [Clarity-0.2.19-mac-x64.zip](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-mac-x64.zip) |
 | Windows 10/11 x64 | [Clarity-0.2.19-win-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-win-x64.exe) |
 | Windows 7/8/8.1 x64 compatibility build | [Clarity-0.2.19-win7-x64.exe](https://github.com/EthanChenHyland/clarity/releases/download/v0.2.19/Clarity-0.2.19-win7-x64.exe) |
 
-On macOS, unzip the matching build and move `Clarity.app` to Applications. The older published Mac builds are **ad-hoc signed, not Developer ID-signed or notarized**, so Gatekeeper may block launch. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. GitHub provides an SHA-256 digest for each uploaded release asset.
+On macOS, unzip the matching build and move `Clarity.app` to Applications. Because these builds are **not Developer ID-signed or notarized**, Gatekeeper may block launch; only approve the app in **System Settings → Privacy & Security → Open Anyway** if you trust the download. On Windows, run the x64 NSIS installer; the current Windows installer is **not Authenticode-signed**, so Microsoft Defender SmartScreen may warn before first launch. GitHub provides an SHA-256 digest for each uploaded release asset.
 
 Automated tests pass on supported Node versions, Windows packaging runs on `windows-latest`, and the Windows whisper.cpp runtime is downloaded, checksum-verified, launched, and smoke-tested in CI. Live provider responses plus end-to-end capture with real conferencing software still require field testing on each target OS. See the [verification notes](docs/permission-verification.md) for the current macOS permission scope and remaining limitations.
 
@@ -62,7 +62,7 @@ npm run dist:mac -- --arm64 --x64
 npm run dist:win
 ```
 
-The source and current Windows release target are **v0.2.19**. Apple silicon build output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.19-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.19-mac-x64.zip`; Windows output is `dist/Clarity-0.2.19-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.19-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
+The source and current release target are **v0.2.19**. Apple silicon build output is `dist/mac-arm64/Clarity.app` and `dist/Clarity-0.2.19-mac-arm64.zip`; Intel output is `dist/mac/Clarity.app` and `dist/Clarity-0.2.19-mac-x64.zip`; Windows output is `dist/Clarity-0.2.19-win-x64.exe`; the legacy Windows compatibility output is `dist-win7/Clarity-0.2.19-win7-x64.exe`. For macOS permission testing, copy the local app to `/Applications` and launch it from Finder. On Windows, install with the NSIS package so the packaged executable and bundled runtime are tested together.
 
 ### Performance notes
 
@@ -170,7 +170,7 @@ Clarity does not require a Clarity account or hosted backend. It connects to the
 
 **A model request fails:** check the endpoint, credentials, model ID, permissions, and image-input support. Model defaults do not verify provider availability.
 
-**A downloaded app is blocked by macOS:** the attached Mac builds are ad-hoc signed and not notarized. Building locally is an alternative. Do not disable Gatekeeper globally; a checksum verifies file integrity, not Apple approval.
+**A downloaded app is blocked by macOS:** the attached Mac builds are ad-hoc signed and not notarized. After verifying the release download, macOS may allow you to approve it through **System Settings → Privacy & Security → Open Anyway**. Building locally is another option. Do not disable Gatekeeper globally; a checksum verifies file integrity, not Apple approval.
 
 **Windows SmartScreen warns about the installer:** the current Windows installer is not Authenticode-signed. Verify its SHA-256 against `SHA256SUMS.txt` before choosing the Windows option to continue.
 
@@ -190,7 +190,7 @@ The test suite covers provider behavior, capture lifecycle, renderer recovery, p
 codesign --verify --deep --strict dist/mac-arm64/Clarity.app
 ```
 
-Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered workflow builds Windows x64 plus both Apple silicon and Intel macOS packages. All packages are retained as workflow artifacts. The Windows installer is uploaded to the release automatically; macOS release upload remains gated on complete signing/notarization credentials, so unsigned CI builds cannot replace a signed public asset.
+Developer ID signing uses `MAC_SIGN=1` with a suitable signing identity and notarization credentials. The tag-triggered workflow builds Windows x64 plus both Apple silicon and Intel macOS packages. All packages are retained as workflow artifacts and uploaded to GitHub Releases, including ad-hoc signed, unnotarized Mac builds when Apple credentials are absent.
 
 Settings includes **Copy Diagnostics**, which copies a privacy-safe JSON snapshot for bug reports. It includes version, OS, permission state, selected models/providers, runtime/resource health, and shortcut registration status while excluding API keys, tokens, transcript text, résumé text, and repository URLs.
 
